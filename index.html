@@ -3,75 +3,62 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Weekly Meal Planner</title>
-  <meta name="theme-color" content="#111827" />
+  <title>Meal Planner — Macros</title>
+  <meta name="theme-color" content="#0b1224" />
   <style>
-    :root { --bg:#0b1020; --card:#111827; --muted:#9ca3af; --text:#e5e7eb; --accent:#22c55e; --border:#1f2937; }
+    :root { --bg:#07101b; --card:#0b1224; --muted:#9ca3af; --text:#e6eef6; --accent:#22c55e; --border:#172033; }
     * { box-sizing: border-box; }
-    body { margin:0; font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; background:linear-gradient(180deg,#070a14, #0b1020); color:var(--text); }
-    header { position: sticky; top:0; background:rgba(11,16,32,.85); backdrop-filter: blur(10px); border-bottom:1px solid var(--border); padding:14px 16px; z-index:5; }
-    h1 { margin:0; font-size:18px; letter-spacing:.2px; }
-    main { padding:16px; max-width:920px; margin:0 auto; display:grid; gap:14px; }
-    .grid { display:grid; gap:14px; grid-template-columns: 1fr; }
-    @media (min-width: 860px) { .grid { grid-template-columns: 1.2fr .8fr; } }
+    body { margin:0; font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial; background:linear-gradient(180deg,#04101a,#07101b); color:var(--text); }
+    header { padding:14px 16px; border-bottom:1px solid var(--border); background:rgba(11,18,36,.55); position:sticky; top:0; backdrop-filter: blur(8px); z-index:5; }
+    main { padding:16px; max-width:980px; margin:0 auto; display:grid; gap:14px; }
+    .grid { display:grid; gap:14px; grid-template-columns: 1.2fr .8fr; }
+    @media (max-width:860px){ .grid{ grid-template-columns:1fr } }
 
-    .card { background:rgba(17,24,39,.92); border:1px solid var(--border); border-radius:16px; padding:14px; box-shadow: 0 10px 30px rgba(0,0,0,.25); }
-    .card h2 { margin:0 0 10px; font-size:14px; color:var(--muted); font-weight:600; text-transform:uppercase; letter-spacing:.08em; }
+    .card { background:rgba(13,21,34,.9); border:1px solid var(--border); border-radius:14px; padding:14px; box-shadow:0 8px 24px rgba(0,0,0,.4); }
+    h1 { margin:0; font-size:18px; }
+    h2 { margin:0 0 10px; font-size:13px; color:var(--muted); text-transform:uppercase; letter-spacing:.08em; }
 
     .row { display:flex; gap:10px; align-items:center; }
-    input, textarea, button, select {
-      font: inherit; color:var(--text);
-      background:#0b1224; border:1px solid var(--border);
-      border-radius:12px; padding:10px 12px;
-      outline:none;
-    }
+    input, textarea, button, select { font:inherit; color:var(--text); background:transparent; border:1px solid var(--border); border-radius:10px; padding:8px 10px; }
     input::placeholder, textarea::placeholder { color:#6b7280; }
-    textarea { width:100%; min-height:72px; resize:vertical; }
     button { cursor:pointer; }
-    button.primary { background: linear-gradient(135deg, #16a34a, #22c55e); border-color: rgba(34,197,94,.35); color:#03110a; font-weight:700; }
-    button.ghost { background: transparent; }
-    button:active { transform: translateY(1px); }
+    button.primary { background: linear-gradient(135deg,#16a34a,#22c55e); border-color: rgba(34,197,94,.25); color:#03110a; font-weight:700; }
     .muted { color:var(--muted); font-size:12px; }
 
     .week { display:grid; gap:10px; }
-    .day {
-      display:flex; justify-content:space-between; align-items:center; gap:10px;
-      padding:12px; border-radius:14px; border:1px solid var(--border); background:#0b1224;
-    }
-    .day strong { font-size:14px; }
-    .pill { font-size:12px; padding:6px 10px; border-radius:999px; border:1px solid var(--border); background:rgba(255,255,255,.03); color:var(--text); max-width:55vw; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+    .day { display:flex; justify-content:space-between; gap:10px; padding:12px; border-radius:12px; border:1px solid var(--border); background:linear-gradient(180deg, rgba(255,255,255,.01), transparent); align-items:center; }
+    .dayLeft { display:flex; gap:12px; align-items:center; min-width:220px; }
+    .day .meta { font-size:12px; color:var(--muted); }
+    .pill { font-size:13px; padding:6px 10px; border-radius:999px; background:rgba(255,255,255,.02); max-width:48vw; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
     .pill.empty { color:#6b7280; }
-    .actions { display:flex; gap:10px; flex-wrap:wrap; }
+
+    .totals { text-align:right; font-size:13px; color:var(--muted); }
+    .totals strong { color:var(--text); display:block; font-size:14px; }
+
     .list { display:flex; flex-direction:column; gap:8px; max-height:320px; overflow:auto; padding-right:4px; }
-    .dish {
-      display:flex; justify-content:space-between; align-items:center; gap:10px;
-      padding:10px; border-radius:12px; border:1px solid var(--border); background:#0b1224;
-    }
-    .dish span { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-    .dish button { padding:8px 10px; border-radius:10px; }
-    .danger { border-color: rgba(239,68,68,.35); color:#fecaca; }
-    .toast {
-      position: fixed; left:50%; bottom:18px; transform: translateX(-50%);
-      background: rgba(17,24,39,.95); border:1px solid var(--border);
-      padding:10px 12px; border-radius:999px; font-size:13px; color:var(--text);
-      box-shadow: 0 10px 30px rgba(0,0,0,.35);
-      opacity:0; pointer-events:none; transition: opacity .2s ease;
-    }
-    .toast.show { opacity:1; }
-    dialog { border:none; border-radius:16px; padding:0; width:min(560px, 92vw); background:var(--card); color:var(--text); }
-    dialog::backdrop { background: rgba(0,0,0,.55); }
-    .dlg { padding:14px; border:1px solid var(--border); border-radius:16px; }
-    .dlg h3 { margin:0 0 10px; font-size:16px; }
-    .dlg .list { max-height: 50vh; }
-    .dlg .dish { cursor:pointer; }
-    .dlg .dish:hover { border-color: rgba(34,197,94,.4); }
+    .dish { display:flex; justify-content:space-between; align-items:center; gap:10px; padding:8px; border-radius:10px; border:1px solid var(--border); }
+    .dish small { color:var(--muted); font-size:12px; margin-left:6px; }
+
+    dialog { border:none; border-radius:12px; padding:0; width:min(640px, 94vw); background:var(--card); color:var(--text); }
+    dialog::backdrop { background:rgba(0,0,0,.6); }
+    .dlg { padding:14px; }
+
     .footer { display:flex; justify-content:space-between; gap:10px; margin-top:10px; }
+    .danger { border-color: rgba(239,68,68,.25); color:#fecaca; }
+
+    .micro { font-size:12px; color:var(--muted); }
+
+    input[type=number] { max-width:120px; }
+    .servingInput { width:72px; }
+
+    .smallBtn { padding:6px 8px; border-radius:8px; }
+    .inlineControls { display:flex; gap:6px; align-items:center; flex-wrap:wrap; }
   </style>
 </head>
 <body>
   <header>
-    <h1>Weekly Meal Planner</h1>
-    <div class="muted" id="subtitle"></div>
+    <h1>Meal Planner — Macros</h1>
+    <div class="micro" id="subtitle">Per-serving macros; set servings per day.</div>
   </header>
 
   <main>
@@ -80,88 +67,108 @@
         <h2>Week plan</h2>
         <div class="row" style="justify-content:space-between; margin-bottom:10px;">
           <div class="row">
-            <button class="ghost" id="prevWeek" aria-label="Previous week">←</button>
-            <button class="ghost" id="nextWeek" aria-label="Next week">→</button>
+            <button class="smallBtn" id="prevWeek">←</button>
+            <button class="smallBtn" id="nextWeek">→</button>
+            <div class="muted" id="weekRange" style="margin-left:10px;"></div>
           </div>
-          <div class="actions">
-            <button id="fillEmpty">Fill empty</button>
-            <button id="shuffleWeek">Shuffle week</button>
+
+          <div class="inlineControls">
+            <button id="fillEmpty" class="smallBtn">Fill empty</button>
+            <button id="shuffleWeek" class="smallBtn">Shuffle</button>
             <button class="primary" id="copyPlan">Copy plan</button>
+            <button id="exportCSV" class="smallBtn">Export CSV</button>
           </div>
         </div>
+
         <div class="week" id="week"></div>
-        <div class="muted" style="margin-top:10px;">
-          Tip: tap a day to pick a dish. Everything saves automatically on this device.
-        </div>
+        <div class="muted" style="margin-top:10px;">Totals update as you assign dishes and change servings. All data stored on this device.</div>
       </section>
 
       <section class="card">
-        <h2>Dishes</h2>
+        <h2>Dishes & Macros</h2>
 
-        <div class="row" style="margin-bottom:10px;">
-          <input id="search" placeholder="Search dishes…" style="flex:1;" />
-          <button id="clearSearch" class="ghost" aria-label="Clear search">✕</button>
-        </div>
-
-        <div class="row" style="margin-bottom:10px;">
-          <input id="newDish" placeholder="Add a dish name…" style="flex:1;" />
-          <button class="primary" id="addDish">Add</button>
+        <div style="margin-bottom:10px;">
+          <div style="display:grid; gap:8px;">
+            <input id="dishName" placeholder="Dish name" />
+            <div class="row">
+              <input id="dishCal" placeholder="Calories (kcal)" type="number" />
+              <input id="dishProtein" placeholder="Protein (g)" type="number" />
+              <input id="dishCarbs" placeholder="Carbs (g)" type="number" />
+              <button class="primary" id="saveDish">Save</button>
+            </div>
+            <div class="muted">Per-serving values. You can edit a dish after creating it.</div>
+          </div>
         </div>
 
         <details style="margin-bottom:10px;">
-          <summary class="muted" style="cursor:pointer;">Import many dishes</summary>
+          <summary class="muted" style="cursor:pointer;">Import CSV (one per line)</summary>
           <div style="margin-top:10px;">
-            <textarea id="bulk" placeholder="Paste one dish per line…"></textarea>
-            <div class="row" style="justify-content:space-between; margin-top:10px;">
-              <span class="muted">Duplicates are ignored.</span>
+            <textarea id="bulk" placeholder="Example: Pasta bake,650,25,80"></textarea>
+            <div class="row" style="justify-content:space-between; margin-top:8px;">
+              <span class="muted">Format: name, calories, protein, carbs</span>
               <button id="importBulk">Import</button>
             </div>
           </div>
         </details>
 
+        <div style="margin-bottom:10px;" class="row">
+          <input id="search" placeholder="Search dishes…" style="flex:1;" />
+          <button id="clearSearch" class="smallBtn">✕</button>
+        </div>
+
         <div class="list" id="dishList"></div>
-        <div class="row" style="justify-content:space-between; margin-top:10px;">
+
+        <div style="display:flex; justify-content:space-between; margin-top:10px;">
           <span class="muted" id="count"></span>
-          <button id="reset" class="danger">Reset data</button>
+          <div class="row">
+            <button id="reset" class="danger">Reset</button>
+          </div>
         </div>
       </section>
     </div>
   </main>
 
+  <!-- Picker dialog -->
   <dialog id="picker">
     <div class="dlg">
       <h3 id="pickTitle">Pick a dish</h3>
-      <div class="row" style="margin-bottom:10px;">
+      <div class="row" style="margin:8px 0;">
         <input id="pickSearch" placeholder="Search…" style="flex:1;" />
-        <button class="ghost" id="pickClear">✕</button>
+        <button class="smallBtn" id="pickClear">✕</button>
       </div>
+
       <div class="list" id="pickList"></div>
-      <div class="footer">
-        <button id="clearDay" class="danger">Clear day</button>
-        <button id="closePicker">Close</button>
+
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-top:10px;">
+        <div style="display:flex; gap:8px; align-items:center;">
+          <label class="muted">Servings:</label>
+          <input id="servings" class="servingInput" type="number" min="0.25" step="0.25" value="1" />
+        </div>
+        <div style="display:flex; gap:8px;">
+          <button id="clearDay" class="danger smallBtn">Clear day</button>
+          <button id="closePicker" class="smallBtn">Close</button>
+        </div>
       </div>
     </div>
   </dialog>
 
-  <div class="toast" id="toast"></div>
-
 <script>
 (() => {
+  // ---------- Constants & storage ----------
   const DAYS = ["Mon","Tue","Wed","Thu","Fri","Sat","Sun"];
+  const KEY = "mealPlanner.macro.v1";
 
-  // ---------- Storage ----------
-  const KEY = "mealPlanner.v1";
-  const defaultState = () => ({
-    dishes: [
-      // starter examples (you can delete)
-      { id: crypto.randomUUID(), name: "Pasta bake" },
-      { id: crypto.randomUUID(), name: "Tacos" },
-      { id: crypto.randomUUID(), name: "Stir-fry" },
-      { id: crypto.randomUUID(), name: "Curry" }
-    ],
-    // planByWeekStart: { "YYYY-MM-DD": { Mon:dishId|null, ... } }
-    planByWeekStart: {}
-  });
+  function defaultState() {
+    return {
+      dishes: [
+        // example starter
+        { id: crypto.randomUUID(), name: "Pasta bake", cal: 650, protein: 25, carbs: 80 },
+        { id: crypto.randomUUID(), name: "Chicken & rice", cal: 520, protein: 40, carbs: 55 },
+        { id: crypto.randomUUID(), name: "Veg stir-fry", cal: 420, protein: 12, carbs: 60 }
+      ],
+      planByWeekStart: {}
+    };
+  }
 
   function loadState() {
     try {
@@ -170,26 +177,16 @@
       const parsed = JSON.parse(raw);
       if (!parsed.dishes || !parsed.planByWeekStart) return defaultState();
       return parsed;
-    } catch {
+    } catch (e) {
+      console.error("load error", e);
       return defaultState();
     }
   }
-  function saveState() {
-    localStorage.setItem(KEY, JSON.stringify(state));
-  }
+  function saveState() { localStorage.setItem(KEY, JSON.stringify(state)); }
 
   let state = loadState();
 
-  // ---------- Dates / week handling ----------
-  // Week starts Monday (Europe/London friendly)
-  function toISODate(d) {
-    const x = new Date(d);
-    x.setHours(0,0,0,0);
-    const yyyy = x.getFullYear();
-    const mm = String(x.getMonth()+1).padStart(2,"0");
-    const dd = String(x.getDate()).padStart(2,"0");
-    return `${yyyy}-${mm}-${dd}`;
-  }
+  // ---------- Week handling ----------
   function startOfWeek(date) {
     const d = new Date(date);
     d.setHours(0,0,0,0);
@@ -197,135 +194,200 @@
     d.setDate(d.getDate() - day);
     return d;
   }
-  function addDays(date, n) {
-    const d = new Date(date);
-    d.setDate(d.getDate() + n);
-    return d;
-  }
-  function fmtRange(weekStart) {
-    const a = new Date(weekStart);
-    const b = addDays(a, 6);
+  function addDays(d, n) { const x = new Date(d); x.setDate(x.getDate()+n); return x; }
+  function toISO(d) { const x = new Date(d); x.setHours(0,0,0,0); return x.toISOString().slice(0,10); }
+  function fmtRange(ws) {
+    const a = new Date(ws), b = addDays(a,6);
     const opts = { day:"2-digit", month:"short" };
-    const year = a.getFullYear();
-    return `${a.toLocaleDateString(undefined, opts)} – ${b.toLocaleDateString(undefined, opts)} ${year}`;
+    return `${a.toLocaleDateString(undefined,opts)} – ${b.toLocaleDateString(undefined,opts)} ${a.getFullYear()}`;
   }
 
   let weekStart = startOfWeek(new Date());
-
-  function ensureWeekPlan() {
-    const key = toISODate(weekStart);
+  function ensureWeekPlan(ws = weekStart) {
+    const key = toISO(ws);
     if (!state.planByWeekStart[key]) {
-      state.planByWeekStart[key] = Object.fromEntries(DAYS.map(d => [d, null]));
+      state.planByWeekStart[key] = Object.fromEntries(DAYS.map(d => [d, { dishId: null, servings: 1 }]));
       saveState();
     }
     return state.planByWeekStart[key];
   }
 
-  // ---------- UI refs ----------
+  // ---------- DOM refs ----------
   const elWeek = document.getElementById("week");
-  const elSubtitle = document.getElementById("subtitle");
+  const elWeekRange = document.getElementById("weekRange");
   const elDishList = document.getElementById("dishList");
   const elCount = document.getElementById("count");
   const elSearch = document.getElementById("search");
-  const elNewDish = document.getElementById("newDish");
+  const elDishName = document.getElementById("dishName");
+  const elDishCal = document.getElementById("dishCal");
+  const elDishProtein = document.getElementById("dishProtein");
+  const elDishCarbs = document.getElementById("dishCarbs");
   const elBulk = document.getElementById("bulk");
-  const toastEl = document.getElementById("toast");
+  const toastTimer = { t:null };
 
   const dlg = document.getElementById("picker");
   const pickTitle = document.getElementById("pickTitle");
   const pickSearch = document.getElementById("pickSearch");
   const pickList = document.getElementById("pickList");
+  const servingsInput = document.getElementById("servings");
 
-  let activeDay = null;
+  let activeDay = null; // "Mon" etc.
 
+  // ---------- Utilities ----------
   function toast(msg) {
-    toastEl.textContent = msg;
-    toastEl.classList.add("show");
-    setTimeout(() => toastEl.classList.remove("show"), 1400);
+    if (toastTimer.t) clearTimeout(toastTimer.t);
+    let el = document.getElementById("__toast");
+    if (!el) {
+      el = document.createElement("div");
+      el.id="__toast";
+      el.style.cssText = "position:fixed;left:50%;bottom:18px;transform:translateX(-50%);background:rgba(10,18,30,.95);padding:10px 14px;border-radius:999px;border:1px solid rgba(255,255,255,.03);box-shadow:0 10px 30px rgba(0,0,0,.4);font-size:13px;color:var(--text);z-index:9999;";
+      document.body.appendChild(el);
+    }
+    el.textContent = msg;
+    el.style.opacity = "1";
+    toastTimer.t = setTimeout(()=> el.style.opacity="0", 1600);
   }
 
-  // ---------- Helpers ----------
-  function normalizeName(s) {
-    return s.trim().replace(/\s+/g, " ");
-  }
-  function sortByName(a, b) {
-    return a.name.localeCompare(b.name, undefined, { sensitivity:"base" });
-  }
-  function getDishName(id) {
-    const d = state.dishes.find(x => x.id === id);
-    return d ? d.name : "";
-  }
-  function filteredDishes(query) {
-    const q = query.trim().toLowerCase();
-    const arr = [...state.dishes].sort(sortByName);
-    if (!q) return arr;
-    return arr.filter(d => d.name.toLowerCase().includes(q));
-  }
+  function normalizeName(s){ return s.trim().replace(/\s+/g,' '); }
+  function getDish(id){ return state.dishes.find(d => d.id === id) || null; }
+  function filteredDishes(q){ const s=q.trim().toLowerCase(); return s? state.dishes.filter(d=>d.name.toLowerCase().includes(s)).sort((a,b)=>a.name.localeCompare(b.name)) : [...state.dishes].sort((a,b)=>a.name.localeCompare(b.name)); }
 
-  // ---------- Render ----------
+  // ---------- Rendering ----------
   function render() {
-    const plan = ensureWeekPlan();
-    elSubtitle.textContent = fmtRange(weekStart);
+    elWeekRange.textContent = fmtRange(weekStart);
+    renderWeek();
+    renderDishList();
+  }
 
-    // Week
+  function renderWeek() {
+    const plan = ensureWeekPlan();
     elWeek.innerHTML = "";
+    // Also compute totals per day
     DAYS.forEach((day, idx) => {
-      const date = addDays(weekStart, idx);
-      const iso = toISODate(date);
-      const dishId = plan[day];
-      const name = dishId ? getDishName(dishId) : "";
+      const entry = plan[day] || { dishId:null, servings:1 };
+      const dish = entry.dishId ? getDish(entry.dishId) : null;
+      // totals
+      const totCal = dish ? (Number(dish.cal) || 0) * (Number(entry.servings)||0) : 0;
+      const totProtein = dish ? (Number(dish.protein)||0) * (Number(entry.servings)||0) : 0;
+      const totCarbs = dish ? (Number(dish.carbs)||0) * (Number(entry.servings)||0) : 0;
+      const date = toISO(addDays(weekStart, idx));
       const row = document.createElement("div");
       row.className = "day";
       row.innerHTML = `
-        <div style="min-width:110px;">
-          <strong>${day}</strong>
-          <div class="muted">${iso}</div>
+        <div class="dayLeft">
+          <div>
+            <strong>${day}</strong>
+            <div class="meta">${date}</div>
+          </div>
+          <div style="min-width:150px;">
+            <div class="pill ${dish ? '' : 'empty'}" title="${dish ? dish.name : 'Tap to choose'}">
+              ${dish ? dish.name : 'Tap to choose'}
+            </div>
+            <div class="micro" style="margin-top:6px;">Servings: <strong>${entry.servings ?? 1}</strong></div>
+          </div>
         </div>
-        <div class="pill ${name ? "" : "empty"}" title="${name || "Tap to choose"}">
-          ${name || "Tap to choose"}
+        <div style="display:flex;flex-direction:column;align-items:flex-end;min-width:140px;">
+          <div class="totals">
+            <strong>${Math.round(totCal)} kcal</strong>
+            <div class="micro">${Math.round(totProtein)}g protein • ${Math.round(totCarbs)}g carbs</div>
+          </div>
+          <div style="margin-top:8px;">
+            <button class="smallBtn" data-day="${day}">Edit</button>
+          </div>
         </div>
       `;
-      row.addEventListener("click", () => openPicker(day));
+      // open picker
+      row.querySelector("button[data-day]").addEventListener("click", () => openPicker(day));
       elWeek.appendChild(row);
     });
+  }
 
-    // Dish list
+  function renderDishList() {
     const list = filteredDishes(elSearch.value);
     elDishList.innerHTML = "";
     list.forEach(d => {
-      const row = document.createElement("div");
-      row.className = "dish";
-      row.innerHTML = `
-        <span title="${d.name}">${d.name}</span>
-        <button class="danger" aria-label="Delete ${d.name}">Delete</button>
+      const el = document.createElement("div");
+      el.className = "dish";
+      el.innerHTML = `
+        <div>
+          <div><strong>${d.name}</strong> <small class="micro">(${d.cal} kcal, ${d.protein}g P, ${d.carbs}g C)</small></div>
+        </div>
+        <div style="display:flex;gap:8px;">
+          <button class="smallBtn" data-edit="${d.id}">Edit</button>
+          <button class="smallBtn" data-delete="${d.id}">Delete</button>
+        </div>
       `;
-      row.querySelector("button").addEventListener("click", () => deleteDish(d.id));
-      elDishList.appendChild(row);
+      el.querySelector("[data-delete]").addEventListener("click", () => deleteDish(d.id));
+      el.querySelector("[data-edit]").addEventListener("click", () => editDish(d.id));
+      elDishList.appendChild(el);
     });
-
-    elCount.textContent = `${state.dishes.length} dish${state.dishes.length === 1 ? "" : "es"}`;
+    elCount.textContent = `${state.dishes.length} dish${state.dishes.length===1? '' : 'es'}`;
   }
 
-  // ---------- Dish operations ----------
-  function addDish(name) {
-    const n = normalizeName(name);
-    if (!n) return;
-    const exists = state.dishes.some(d => d.name.toLowerCase() === n.toLowerCase());
-    if (exists) { toast("Already in list"); return; }
-    state.dishes.push({ id: crypto.randomUUID(), name: n });
+  // ---------- Dish CRUD ----------
+  function clearDishForm() {
+    elDishName.value = "";
+    elDishCal.value = "";
+    elDishProtein.value = "";
+    elDishCarbs.value = "";
+    elDishName.dataset.editing = "";
+  }
+  function saveDishFromForm() {
+    const name = normalizeName(elDishName.value || "");
+    if (!name) { toast("Name required"); return; }
+    const cal = Number(elDishCal.value) || 0;
+    const protein = Number(elDishProtein.value) || 0;
+    const carbs = Number(elDishCarbs.value) || 0;
+
+    // if editing
+    const editing = elDishName.dataset.editing;
+    if (editing) {
+      const idx = state.dishes.findIndex(d => d.id === editing);
+      if (idx !== -1) {
+        state.dishes[idx].name = name;
+        state.dishes[idx].cal = cal;
+        state.dishes[idx].protein = protein;
+        state.dishes[idx].carbs = carbs;
+        saveState();
+        toast("Updated");
+        clearDishForm();
+        render();
+        return;
+      }
+    }
+
+    // create new dish
+    if (state.dishes.some(d => d.name.toLowerCase() === name.toLowerCase())) {
+      toast("Already exists");
+      return;
+    }
+    state.dishes.push({ id: crypto.randomUUID(), name, cal, protein, carbs });
     saveState();
-    toast("Added");
+    toast("Saved");
+    clearDishForm();
     render();
   }
 
-  function deleteDish(id) {
-    // Remove from dish list
-    state.dishes = state.dishes.filter(d => d.id !== id);
+  function editDish(id) {
+    const d = getDish(id);
+    if (!d) return;
+    elDishName.value = d.name;
+    elDishCal.value = d.cal;
+    elDishProtein.value = d.protein;
+    elDishCarbs.value = d.carbs;
+    elDishName.dataset.editing = d.id;
+    elDishName.focus();
+  }
 
-    // Remove from any weeks where used
+  function deleteDish(id) {
+    const ok = confirm("Delete dish? This also clears it from any plans.");
+    if (!ok) return;
+    state.dishes = state.dishes.filter(x => x.id !== id);
+    // remove from plans
     for (const wk of Object.keys(state.planByWeekStart)) {
       for (const day of DAYS) {
-        if (state.planByWeekStart[wk][day] === id) state.planByWeekStart[wk][day] = null;
+        const p = state.planByWeekStart[wk][day];
+        if (p && p.dishId === id) state.planByWeekStart[wk][day] = { dishId: null, servings: 1 };
       }
     }
     saveState();
@@ -333,34 +395,30 @@
     render();
   }
 
-  // ---------- Picker dialog ----------
+  // ---------- Picker ----------
   function openPicker(day) {
     activeDay = day;
     pickTitle.textContent = `Pick for ${day}`;
     pickSearch.value = "";
+    servingsInput.value = (ensureWeekPlan()[day].servings) ?? 1;
     renderPicker();
     dlg.showModal();
     pickSearch.focus();
   }
-
   function renderPicker() {
     const list = filteredDishes(pickSearch.value);
     pickList.innerHTML = "";
     if (list.length === 0) {
-      const empty = document.createElement("div");
-      empty.className = "muted";
-      empty.style.padding = "10px 2px";
-      empty.textContent = "No dishes match.";
-      pickList.appendChild(empty);
-      return;
+      const el = document.createElement("div"); el.className="muted"; el.textContent="No dishes found."; pickList.appendChild(el); return;
     }
     list.forEach(d => {
       const row = document.createElement("div");
       row.className = "dish";
-      row.innerHTML = `<span>${d.name}</span><span class="muted">Tap</span>`;
-      row.addEventListener("click", () => {
+      row.innerHTML = `<div><strong>${d.name}</strong> <small class="micro">(${d.cal} kcal, ${d.protein}g P, ${d.carbs}g C)</small></div><div><button class="smallBtn">Choose</button></div>`;
+      row.querySelector("button").addEventListener("click", () => {
+        const servings = Number(servingsInput.value) || 1;
         const plan = ensureWeekPlan();
-        plan[activeDay] = d.id;
+        plan[activeDay] = { dishId: d.id, servings };
         saveState();
         dlg.close();
         toast("Saved");
@@ -370,136 +428,125 @@
     });
   }
 
-  // ---------- Planning logic ----------
-  function shuffleArray(arr) {
-    const a = [...arr];
-    for (let i = a.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1));
-      [a[i], a[j]] = [a[j], a[i]];
-    }
-    return a;
-  }
-
-  function fillWeek({ onlyEmpty }) {
+  // ---------- Planner helpers ----------
+  function shuffleArray(a){ const arr=[...a]; for(let i=arr.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [arr[i],arr[j]]=[arr[j],arr[i]]; } return arr; }
+  function fillWeek({ onlyEmpty=false } = {}) {
     const plan = ensureWeekPlan();
-    if (state.dishes.length === 0) { toast("Add some dishes first"); return; }
-
-    const used = new Set(Object.values(plan).filter(Boolean));
+    if (state.dishes.length === 0) { toast("Add dishes first"); return; }
     const dishIds = state.dishes.map(d => d.id);
-    let pool = shuffleArray(dishIds);
-
+    const pool = shuffleArray(dishIds);
+    const used = new Set(Object.values(plan).map(e=>e?.dishId).filter(Boolean));
     DAYS.forEach(day => {
-      const isEmpty = !plan[day];
-      if (onlyEmpty && !isEmpty) return;
-
-      // pick first not already used (avoid repeats in week)
+      if (onlyEmpty && plan[day].dishId) return;
+      // choose first unused
       let pick = pool.find(id => !used.has(id));
-      // if you have fewer dishes than days, allow repeats
-      if (!pick) pick = pool[Math.floor(Math.random() * pool.length)];
-
-      plan[day] = pick;
+      if (!pick) pick = pool[Math.floor(Math.random()*pool.length)];
+      plan[day] = { dishId: pick, servings: 1 };
       used.add(pick);
-      // rotate pool a bit
-      pool = shuffleArray(pool);
     });
-
     saveState();
-    toast(onlyEmpty ? "Filled empties" : "Shuffled");
+    toast(onlyEmpty? "Filled empties" : "Shuffled");
     render();
   }
 
+  // copy plan text
   function copyPlan() {
     const plan = ensureWeekPlan();
-    const lines = DAYS.map((day, idx) => {
-      const date = toISODate(addDays(weekStart, idx));
-      const name = plan[day] ? getDishName(plan[day]) : "(empty)";
-      return `${day} (${date}): ${name}`;
+    const header = `Meal plan — ${fmtRange(weekStart)}\n`;
+    const lines = DAYS.map((day,idx) => {
+      const e = plan[day];
+      const d = e.dishId ? getDish(e.dishId) : null;
+      const name = d ? d.name : "(empty)";
+      const date = toISO(addDays(weekStart, idx));
+      const servings = e?.servings ?? 1;
+      const cal = d ? Math.round((d.cal||0)*servings) : 0;
+      const protein = d ? Math.round((d.protein||0)*servings) : 0;
+      const carbs = d ? Math.round((d.carbs||0)*servings) : 0;
+      return `${day} (${date}): ${name} — ${servings} serving(s) — ${cal} kcal, ${protein}g P, ${carbs}g C`;
     });
-    const text = `Meal plan — ${fmtRange(weekStart)}\n` + lines.join("\n");
-    navigator.clipboard?.writeText(text)
-      .then(() => toast("Copied"))
-      .catch(() => {
-        // Fallback
-        const ta = document.createElement("textarea");
-        ta.value = text;
-        document.body.appendChild(ta);
-        ta.select();
-        document.execCommand("copy");
-        document.body.removeChild(ta);
-        toast("Copied");
-      });
+    const text = header + lines.join("\n");
+    navigator.clipboard?.writeText(text).then(()=>toast("Copied")).catch(()=>{ toast("Couldn't copy"); });
+  }
+
+  // export CSV of week plan (name, servings, cal/protein/carbs totals)
+  function exportWeekCSV() {
+    const plan = ensureWeekPlan();
+    const rows = [["day","date","dish","servings","calories","protein_g","carbs_g"]];
+    DAYS.forEach((day, idx) => {
+      const e = plan[day];
+      const d = e.dishId ? getDish(e.dishId) : null;
+      const date = toISO(addDays(weekStart, idx));
+      const name = d ? d.name : "";
+      const servings = e?.servings ?? 1;
+      const cal = d ? ((Number(d.cal)||0)*servings) : 0;
+      const protein = d ? ((Number(d.protein)||0)*servings) : 0;
+      const carbs = d ? ((Number(d.carbs)||0)*servings) : 0;
+      rows.push([day, date, name, servings, Math.round(cal), Math.round(protein), Math.round(carbs)]);
+    });
+    const csv = rows.map(r => r.map(cell => `"${String(cell).replace(/"/g,'""')}"`).join(",")).join("\n");
+    // download
+    const blob = new Blob([csv], { type: "text/csv" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url; a.download = `meal-plan-${toISO(weekStart)}.csv`;
+    document.body.appendChild(a); a.click();
+    a.remove(); URL.revokeObjectURL(url);
+  }
+
+  // ---------- Bulk import ----------
+  function importBulkCSV() {
+    const text = elBulk.value || "";
+    const lines = text.split("\n").map(l=>l.trim()).filter(Boolean);
+    if (lines.length === 0) { toast("No lines"); return; }
+    let added=0, skipped=0;
+    lines.forEach(line => {
+      // split by comma (name may contain comma — but for MVP we expect simple input)
+      const parts = line.split(",").map(p=>p.trim());
+      if (parts.length < 4) { skipped++; return; }
+      const name = normalizeName(parts[0]);
+      const cal = Number(parts[1]) || 0;
+      const protein = Number(parts[2]) || 0;
+      const carbs = Number(parts[3]) || 0;
+      if (!name) { skipped++; return; }
+      if (state.dishes.some(d=>d.name.toLowerCase()===name.toLowerCase())) { skipped++; return; }
+      state.dishes.push({ id: crypto.randomUUID(), name, cal, protein, carbs });
+      added++;
+    });
+    saveState();
+    toast(`Imported ${added}, skipped ${skipped}`);
+    elBulk.value = "";
+    render();
   }
 
   // ---------- Wire up controls ----------
-  document.getElementById("addDish").addEventListener("click", () => {
-    addDish(elNewDish.value);
-    elNewDish.value = "";
-    elNewDish.focus();
-  });
-  elNewDish.addEventListener("keydown", (e) => {
-    if (e.key === "Enter") {
-      e.preventDefault();
-      addDish(elNewDish.value);
-      elNewDish.value = "";
-    }
-  });
+  document.getElementById("saveDish").addEventListener("click", saveDishFromForm);
+  elDishName.addEventListener("keydown", (e)=> { if(e.key==="Enter"){ e.preventDefault(); saveDishFromForm(); }});
 
-  document.getElementById("importBulk").addEventListener("click", () => {
-    const lines = elBulk.value.split("\n").map(normalizeName).filter(Boolean);
-    if (lines.length === 0) return;
-    let added = 0;
-    lines.forEach(name => {
-      const exists = state.dishes.some(d => d.name.toLowerCase() === name.toLowerCase());
-      if (!exists) {
-        state.dishes.push({ id: crypto.randomUUID(), name });
-        added++;
-      }
-    });
-    saveState();
-    toast(`Imported ${added}`);
-    render();
-  });
+  document.getElementById("importBulk").addEventListener("click", importBulkCSV);
+  document.getElementById("search").addEventListener("input", renderDishList);
+  document.getElementById("clearSearch").addEventListener("click", ()=>{ elSearch.value=""; renderDishList(); elSearch.focus(); });
 
-  elSearch.addEventListener("input", render);
-  document.getElementById("clearSearch").addEventListener("click", () => {
-    elSearch.value = "";
-    render();
-    elSearch.focus();
-  });
-
-  document.getElementById("fillEmpty").addEventListener("click", () => fillWeek({ onlyEmpty:true }));
-  document.getElementById("shuffleWeek").addEventListener("click", () => fillWeek({ onlyEmpty:false }));
+  document.getElementById("fillEmpty").addEventListener("click", ()=>fillWeek({onlyEmpty:true}));
+  document.getElementById("shuffleWeek").addEventListener("click", ()=>fillWeek({onlyEmpty:false}));
   document.getElementById("copyPlan").addEventListener("click", copyPlan);
+  document.getElementById("exportCSV").addEventListener("click", exportWeekCSV);
 
-  document.getElementById("prevWeek").addEventListener("click", () => {
-    weekStart = addDays(weekStart, -7);
-    render();
-  });
-  document.getElementById("nextWeek").addEventListener("click", () => {
-    weekStart = addDays(weekStart, 7);
-    render();
-  });
+  document.getElementById("prevWeek").addEventListener("click", ()=>{ weekStart = addDays(weekStart,-7); render(); });
+  document.getElementById("nextWeek").addEventListener("click", ()=>{ weekStart = addDays(weekStart,7); render(); });
 
   pickSearch.addEventListener("input", renderPicker);
-  document.getElementById("pickClear").addEventListener("click", () => {
-    pickSearch.value = "";
-    renderPicker();
-    pickSearch.focus();
-  });
-  document.getElementById("closePicker").addEventListener("click", () => dlg.close());
-  document.getElementById("clearDay").addEventListener("click", () => {
-    if (!activeDay) return;
+  document.getElementById("pickClear").addEventListener("click", ()=>{ pickSearch.value=""; renderPicker(); pickSearch.focus();});
+  document.getElementById("closePicker").addEventListener("click", ()=> dlg.close());
+  document.getElementById("clearDay").addEventListener("click", ()=> {
+    if(!activeDay) return;
     const plan = ensureWeekPlan();
-    plan[activeDay] = null;
-    saveState();
-    dlg.close();
-    toast("Cleared");
-    render();
+    plan[activeDay] = { dishId: null, servings: 1 };
+    saveState(); dlg.close(); toast("Cleared"); render();
   });
+  servingsInput.addEventListener("input", ()=> { /* live update of chosen servings when user chooses a dish */ });
 
-  document.getElementById("reset").addEventListener("click", () => {
-    const ok = confirm("Reset dishes + plans on this device?");
-    if (!ok) return;
+  document.getElementById("reset").addEventListener("click", ()=>{
+    if(!confirm("Reset data on this device?")) return;
     localStorage.removeItem(KEY);
     state = defaultState();
     weekStart = startOfWeek(new Date());
@@ -508,8 +555,28 @@
     render();
   });
 
-  // First render
+  // ---------- Edit dish in-place when pressing edit button ----------
+  function loadDishToForm(d) {
+    elDishName.value = d.name;
+    elDishCal.value = d.cal;
+    elDishProtein.value = d.protein;
+    elDishCarbs.value = d.carbs;
+    elDishName.dataset.editing = d.id;
+    elDishName.focus();
+  }
+
+  // expose editDish to button handler
+  function editDishPublic(id) { const d=getDish(id); if(d) loadDishToForm(d); }
+
+  // hook to window for inline calls (used above)
+  window.editDish = editDishPublic;
+
+  // ---------- Initialization ----------
+  // wire rendering initially
   render();
+
+  // make renderDishList accessible for search input
+  window.render = render;
 })();
 </script>
 </body>
