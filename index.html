@@ -21,8 +21,6 @@
       --warn2: #fbbf24;
       --bad1: #dc2626;
       --bad2: #ef4444;
-
-      --dayBorder: rgba(17,24,39,.10);
     }
 
     [data-theme="dark"]{
@@ -33,11 +31,9 @@
       --muted: #9ca3af;
       --border: #172033;
       --shadow: 0 10px 30px rgba(0,0,0,.35);
-
-      --dayBorder: #172033;
     }
 
-    *{ box-sizing:border-box; }
+    * { box-sizing: border-box; }
     body{
       margin:0;
       font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial;
@@ -93,59 +89,86 @@
     .muted{ color:var(--muted); font-size:12px; }
     .micro{ font-size:12px; color:var(--muted); }
     .smallBtn{ padding:6px 8px; border-radius:8px; }
-    .danger{ border-color: color-mix(in srgb, var(--bad2) 30%, transparent 70%); color: color-mix(in srgb, var(--bad2) 45%, var(--text) 55%); }
+    .danger{
+      border-color: color-mix(in srgb, var(--bad2) 30%, transparent 70%);
+      color: color-mix(in srgb, var(--bad2) 55%, var(--text) 45%);
+    }
 
     .week{ display:grid; gap:12px; }
 
-    /* Day card border colour now communicates status */
     .dayCard{
-      border:2px solid var(--dayBorder);
+      border:1px solid var(--border);
       border-radius:14px;
       padding:12px;
       background: linear-gradient(180deg, color-mix(in srgb, var(--card) 96%, #000 4%), transparent);
       display:grid;
       gap:10px;
     }
-    .dayCard.good{ --dayBorder: color-mix(in srgb, var(--good2) 60%, var(--border) 40%); }
-    .dayCard.ok{ --dayBorder: color-mix(in srgb, var(--warn2) 65%, var(--border) 35%); }
-    .dayCard.bad{ --dayBorder: color-mix(in srgb, var(--bad2) 70%, var(--border) 30%); }
 
-    .dayHeader{ display:flex; justify-content:space-between; gap:10px; align-items:flex-start; flex-wrap:wrap; }
+    .dayHeader{
+      display:flex;
+      justify-content:space-between;
+      gap:10px;
+      align-items:flex-start;
+      flex-wrap:wrap;
+    }
+
+    .dayTitle{ display:flex; gap:10px; align-items:flex-start; }
     .dayTitle strong{ font-size:14px; }
     .dayTitle .micro{ margin-top:2px; }
+
+    .dayActions{ display:flex; gap:8px; align-items:center; }
+    .iconBtn{
+      width:32px; height:32px;
+      display:inline-flex; align-items:center; justify-content:center;
+      padding:0;
+      border-radius:10px;
+      border:1px solid var(--border);
+      background: color-mix(in srgb, var(--card) 92%, #000 8%);
+      cursor:pointer;
+    }
+    .iconBtn.danger{
+      border-color: color-mix(in srgb, var(--bad2) 35%, var(--border) 65%);
+      color: color-mix(in srgb, var(--bad2) 70%, var(--text) 30%);
+    }
+    .iconBtn:hover{ filter: brightness(0.98); }
 
     .totalsBox{ text-align:right; min-width:240px; }
     .totalsBox .kcal{ font-size:15px; font-weight:800; }
 
-    .progressWrap{ margin-top:8px; display:grid; gap:8px; }
-    .progRow{ display:grid; grid-template-columns: 64px 1fr 96px; gap:8px; align-items:center; }
-    .progLabel{ font-size:12px; color:var(--muted); }
-
+    /* Compact macro bars: 2x2 */
+    .progressWrap{
+      margin-top:8px;
+      display:grid;
+      grid-template-columns: 1fr 1fr;
+      gap:8px 10px;
+    }
+    .progItem{
+      display:grid;
+      grid-template-columns: 46px 1fr;
+      gap:8px;
+      align-items:center;
+    }
+    .progLabel{
+      font-size:12px;
+      color:var(--muted);
+    }
     .bar{
-      height:10px;
+      height:8px;
       border-radius:999px;
       border:1px solid var(--border);
       overflow:hidden;
       background: color-mix(in srgb, var(--card) 92%, #000 8%);
-      position:relative;
     }
-    .bar > .fill{
+    .fill{
       height:100%;
-      position:absolute;
-      left:0; top:0;
-      background: linear-gradient(135deg,var(--good1),var(--good2));
+      width:0%;
       border-radius:999px;
-      z-index:1;
     }
-    .bar > .overflow{
-      height:100%;
-      position:absolute;
-      top:0;
-      background: linear-gradient(135deg,var(--bad1),var(--bad2));
-      border-radius:999px;
-      z-index:2;
-    }
-    .progVal{ font-size:12px; color:var(--muted); text-align:right; }
+    .fill.green{ background: linear-gradient(135deg,var(--good1),var(--good2)); }
+    .fill.amber{ background: linear-gradient(135deg,var(--warn1),var(--warn2)); }
+    .fill.red{ background: linear-gradient(135deg,var(--bad1),var(--bad2)); }
+    .fill.neutral{ background: color-mix(in srgb, var(--muted) 35%, transparent 65%); }
 
     .meals{ display:grid; gap:8px; }
     .mealRow{
@@ -163,7 +186,7 @@
     .mealRow:active{ cursor: grabbing; }
     @media (max-width:640px){
       .mealRow{ grid-template-columns: 98px 1fr auto; grid-auto-rows:auto; }
-      .mealRow .mealServ{ grid-column: 2 / 3; justify-self:start; }
+      .mealRow .mealMacros{ grid-column: 2 / 3; justify-self:start; }
       .mealRow .mealBtn{ grid-column: 3 / 4; justify-self:end; }
     }
 
@@ -222,7 +245,6 @@
     .checkRow label{ display:flex; align-items:center; gap:6px; font-size:12px; color:var(--muted); }
     .checkRow input{ width:16px; height:16px; }
 
-    /* Warning toast style tweak */
     .toastWarn { border-color: color-mix(in srgb, var(--warn2) 40%, var(--border) 60%) !important; }
   </style>
 </head>
@@ -236,6 +258,8 @@
       </div>
 
       <div class="headerRight">
+        <button id="clearWeek" class="smallBtn danger" type="button" title="Clear all days in this week">Clear week</button>
+
         <button id="themeToggle" class="smallBtn toggleBtn" type="button" aria-label="Toggle light/dark">
           <span class="micro" id="themeLabel">Light</span>
           <span class="toggleDot" aria-hidden="true"></span>
@@ -267,8 +291,8 @@
         <div class="week" id="week"></div>
 
         <div class="hintBox">
-          Drop warning: if you drop a dish into a meal it isn’t tagged for, you’ll get a warning (it still assigns).
-          <br>Day border colour replaces the old “off target” flag.
+          Bar colouring: under target = amber, on target (exact) = green, any over target = red.
+          <br>Drop warning: if you drop a dish into a meal it isn’t tagged for, you’ll get a warning (it still assigns).
         </div>
       </section>
 
@@ -380,7 +404,7 @@
 (() => {
   const DAYS = ["Mon","Tue","Wed","Thu","Fri","Sat","Sun"];
   const MEALS = ["Breakfast","Lunch","Dinner"];
-  const KEY = "mealPlanner.macro.v7";
+  const KEY = "mealPlanner.macro.v8";
   const THEME_KEY = "mealPlanner.theme";
 
   function defaultState() {
@@ -396,40 +420,46 @@
   }
 
   function loadState() {
-    try {
-      const raw = localStorage.getItem(KEY);
-      if (!raw) return defaultState();
-      const parsed = JSON.parse(raw);
-      if (!parsed.dishes || !parsed.planByWeekStart) return defaultState();
-      if (!parsed.targets) parsed.targets = defaultState().targets;
+    // Try newest key first, but also migrate older versions if present
+    const tryKeys = [KEY, "mealPlanner.macro.v7", "mealPlanner.macro.v6", "mealPlanner.macro.v5"];
+    for (const k of tryKeys) {
+      const raw = localStorage.getItem(k);
+      if (!raw) continue;
+      try {
+        const parsed = JSON.parse(raw);
+        if (!parsed.dishes || !parsed.planByWeekStart) continue;
 
-      // migrate dishes to include book/page/categories if missing
-      parsed.dishes = parsed.dishes.map(d => ({
-        book: "",
-        page: null,
-        categories: { Breakfast:true, Lunch:true, Dinner:true },
-        ...d,
-        categories: { Breakfast:true, Lunch:true, Dinner:true, ...(d.categories || {}) }
-      }));
+        if (!parsed.targets) parsed.targets = defaultState().targets;
 
-      parsed.targets = { fat: 0, ...parsed.targets };
+        parsed.dishes = parsed.dishes.map(d => ({
+          book: "",
+          page: null,
+          categories: { Breakfast:true, Lunch:true, Dinner:true },
+          ...d,
+          categories: { Breakfast:true, Lunch:true, Dinner:true, ...(d.categories || {}) }
+        }));
+        parsed.targets = { fat: 0, ...parsed.targets };
 
-      // migrate existing plans: keep servings but ignore in UI; ensure structure exists
-      for (const wk of Object.keys(parsed.planByWeekStart)) {
-        for (const day of DAYS) {
-          if (!parsed.planByWeekStart[wk][day]) parsed.planByWeekStart[wk][day] = {};
-          for (const meal of MEALS) {
-            const e = parsed.planByWeekStart[wk][day][meal];
-            if (!e) parsed.planByWeekStart[wk][day][meal] = { dishId: null, servings: 1 };
-            if (parsed.planByWeekStart[wk][day][meal].servings == null) parsed.planByWeekStart[wk][day][meal].servings = 1;
+        // ensure plan structure
+        for (const wk of Object.keys(parsed.planByWeekStart)) {
+          for (const day of DAYS) {
+            if (!parsed.planByWeekStart[wk][day]) parsed.planByWeekStart[wk][day] = {};
+            for (const meal of MEALS) {
+              const e = parsed.planByWeekStart[wk][day][meal];
+              if (!e) parsed.planByWeekStart[wk][day][meal] = { dishId: null, servings: 1 };
+              if (parsed.planByWeekStart[wk][day][meal].servings == null) parsed.planByWeekStart[wk][day][meal].servings = 1;
+            }
           }
         }
-      }
 
-      return parsed;
-    } catch {
-      return defaultState();
+        // save migrated state into newest key
+        localStorage.setItem(KEY, JSON.stringify(parsed));
+        return parsed;
+      } catch {
+        // ignore and continue
+      }
     }
+    return defaultState();
   }
 
   function saveState(){ localStorage.setItem(KEY, JSON.stringify(state)); }
@@ -468,7 +498,7 @@
   function startOfWeek(date) {
     const d = new Date(date);
     d.setHours(0,0,0,0);
-    const day = (d.getDay() + 6) % 7;
+    const day = (d.getDay() + 6) % 7; // Monday start
     d.setDate(d.getDate() - day);
     return d;
   }
@@ -611,66 +641,44 @@
     return (tar.cal||0) > 0 || (tar.protein||0) > 0 || (tar.carbs||0) > 0 || (tar.fat||0) > 0;
   }
 
-  function dayBand(tot){
-    // returns: "good" | "ok" | "bad" | "neutral"
-    if (!hasTargets()) return "neutral";
-    const tar = state.targets || { cal:0, protein:0, carbs:0, fat:0 };
-
-    function band(actual, target, pctOk){
-      if (!target) return "neutral";
-      const lo = target * (1 - pctOk);
-      const hi = target * (1 + pctOk);
-      if (actual >= lo && actual <= hi) return "good";
-      const lo2 = target * (1 - (pctOk*2));
-      const hi2 = target * (1 + (pctOk*2));
-      if (actual >= lo2 && actual <= hi2) return "ok";
-      return "bad";
-    }
-
-    const a = band(tot.cal, tar.cal, 0.10);
-    const b = band(tot.protein, tar.protein, 0.15);
-    const c = band(tot.carbs, tar.carbs, 0.15);
-    const d = band(tot.fat, tar.fat, 0.15);
-
-    const ranks = { good:2, ok:1, bad:0, neutral:2 };
-    return [a,b,c,d].reduce((w,x)=> ranks[x] < ranks[w] ? x : w, "good");
+  // Colour rule requested:
+  // under target => amber
+  // exact/on target => green (we'll treat equality as green)
+  // any over target => red
+  function macroClass(actual, target){
+    if (!target || target <= 0) return "neutral";
+    if (actual > target) return "red";
+    if (actual === target) return "green";
+    return "amber";
   }
 
-  // Fixed dual segment bars
-  function barParts(actual, target){
-    if (!target || target <= 0) return { green: 0, red: 0, label: `${Math.round(actual)}/–` };
-
-    const ratio = actual / target;     // e.g. 1.25
-    const green = Math.max(0, Math.min(1, ratio)) * 100; // 0..100
-    const overflowRatio = Math.max(0, ratio - 1);        // 0..∞
-    const red = Math.min(0.40, overflowRatio) * 100;     // show up to +40% overflow (0..40)
-    return { green, red, label: `${Math.round(actual)}/${Math.round(target)}` };
+  function macroFillPct(actual, target){
+    if (!target || target <= 0) return 0;
+    // show how close you are; allow a little overfill but cap visually
+    return Math.max(0, Math.min(130, (actual / target) * 100));
   }
 
   function macroProgressHTML(tot){
     const tar = state.targets || {};
     const rows = [
       { label:"kcal", a:tot.cal, t:tar.cal },
-      { label:"Prot", a:tot.protein, t:tar.protein },
-      { label:"Carb", a:tot.carbs, t:tar.carbs },
-      { label:"Fat", a:tot.fat, t:tar.fat },
+      { label:"P",    a:tot.protein, t:tar.protein },
+      { label:"C",    a:tot.carbs, t:tar.carbs },
+      { label:"F",    a:tot.fat, t:tar.fat },
     ];
 
     return `
       <div class="progressWrap">
         ${rows.map(r => {
-          const parts = barParts(r.a, r.t);
-          const greenW = parts.green.toFixed(2);
-          const redW = parts.red.toFixed(2);
-          const redLeft = parts.green.toFixed(2);
+          const cls = macroClass(r.a, r.t);
+          const pct = macroFillPct(r.a, r.t);
+          const label = r.t ? `${Math.round(r.a)}/${Math.round(r.t)}` : `${Math.round(r.a)}/–`;
           return `
-            <div class="progRow">
+            <div class="progItem" title="${r.label}: ${label}">
               <div class="progLabel">${r.label}</div>
-              <div class="bar" title="${parts.label}">
-                <div class="fill" style="width:${greenW}%;"></div>
-                ${parts.red > 0 ? `<div class="overflow" style="left:${redLeft}%; width:max(2px, ${redW}%);"></div>` : ""}
+              <div class="bar">
+                <div class="fill ${cls}" style="width:${pct.toFixed(1)}%;"></div>
               </div>
-              <div class="progVal">${parts.label}</div>
             </div>
           `;
         }).join("")}
@@ -732,9 +740,26 @@
     return best?.id ?? null;
   }
 
+  // ---------- Clear helpers ----------
+  function clearDay(day){
+    const plan = ensureWeekPlan();
+    plan[day] = emptyDay();
+    saveState();
+    renderWeek();
+    toast(`${day} cleared`);
+  }
+
+  function clearWeek(){
+    const plan = ensureWeekPlan();
+    DAYS.forEach(d => plan[d] = emptyDay());
+    saveState();
+    renderWeek();
+    toast("Week cleared");
+  }
+
   // ---------- Rendering ----------
   function render(){
-    document.getElementById("weekRange").textContent = fmtRange(weekStart);
+    elWeekRange.textContent = fmtRange(weekStart);
     renderTargetsUI();
     renderWeek();
     renderDishList();
@@ -756,16 +781,21 @@
       const dateObj = addDays(weekStart, idx);
       const dayObj = plan[day];
       const tot = dayTotals(dayObj);
-      const band = dayBand(tot); // good/ok/bad/neutral
 
       const wrap = document.createElement("div");
-      wrap.className = `dayCard ${band === "neutral" ? "" : band}`;
+      wrap.className = "dayCard";
       wrap.innerHTML = `
         <div class="dayHeader">
           <div class="dayTitle">
-            <strong>${day}</strong>
-            <div class="micro">${formatDate(dateObj)}</div>
+            <div>
+              <strong>${day}</strong>
+              <div class="micro">${formatDate(dateObj)}</div>
+            </div>
+            <div class="dayActions">
+              <button class="iconBtn danger" data-clear-day="1" title="Clear this day" aria-label="Clear this day">✕</button>
+            </div>
           </div>
+
           <div class="totalsBox">
             <div class="kcal">${Math.round(tot.cal)} kcal</div>
             <div class="micro">${Math.round(tot.protein)}g P • ${Math.round(tot.carbs)}g C • ${Math.round(tot.fat)}g F</div>
@@ -782,7 +812,7 @@
               ? `${d.name} — ${d.cal} kcal, ${d.protein}P, ${d.carbs}C, ${d.fat}F${loc ? " — " + loc : ""}`
               : "Drop a dish here or tap Edit";
 
-            // Meal totals are per-serving now
+            // per-serving macro display
             const mealCal = d ? (Number(d.cal)||0) : 0;
             const mealP = d ? (Number(d.protein)||0) : 0;
             const mealC = d ? (Number(d.carbs)||0) : 0;
@@ -799,7 +829,7 @@
                   }
                 </div>
 
-                <div class="micro mealServ">
+                <div class="micro mealMacros">
                   ${Math.round(mealCal)} kcal • ${Math.round(mealP)}P ${Math.round(mealC)}C ${Math.round(mealF)}F
                 </div>
 
@@ -811,6 +841,12 @@
           }).join("")}
         </div>
       `;
+
+      // clear day
+      wrap.querySelector("[data-clear-day]").addEventListener("click", () => {
+        if (!confirm(`Clear all meals for ${day}?`)) return;
+        clearDay(day);
+      });
 
       // Wire up drag/drop
       wrap.querySelectorAll(".mealRow").forEach(row => {
@@ -847,12 +883,10 @@
           const plan = ensureWeekPlan();
 
           if (payload.type === "dish") {
-            // warning if dish not categorised for the target meal
             const dish = getDish(payload.dishId);
             if (dish && dish.categories && dish.categories[targetMeal] === false) {
               toast(`Warning: “${dish.name}” isn’t tagged for ${targetMeal}`, "warn");
             }
-
             plan[targetDay][targetMeal] = { dishId: payload.dishId, servings: 1 };
             saveState();
             renderWeek();
@@ -1053,7 +1087,6 @@
 
       row.querySelector("button").addEventListener("click", () => {
         const plan = ensureWeekPlan();
-        // warning if dish not categorised for this meal
         if (d.categories && d.categories[activeMeal] === false) {
           toast(`Warning: “${d.name}” isn’t tagged for ${activeMeal}`, "warn");
         }
@@ -1076,11 +1109,6 @@
     dlg.close();
     toast("Cleared");
     renderWeek();
-  }
-
-  // ---------- Search ----------
-  function filteredDishesSearch(q){
-    return filteredDishes(q);
   }
 
   // ---------- Auto fill ----------
@@ -1284,6 +1312,13 @@
   document.getElementById("pickClear").addEventListener("click", ()=>{ pickSearch.value=""; renderPicker(); pickSearch.focus(); });
   document.getElementById("closePicker").addEventListener("click", ()=> dlg.close());
   document.getElementById("clearMeal").addEventListener("click", clearActiveMeal);
+
+  // Clear week button with confirm
+  document.getElementById("clearWeek").addEventListener("click", () => {
+    const label = fmtRange(weekStart);
+    if (!confirm(`Clear ALL days for this week (${label})? This cannot be undone.`)) return;
+    clearWeek();
+  });
 
   document.getElementById("reset").addEventListener("click", ()=>{
     if (!confirm("Reset dishes, targets, and all saved plans on this device?")) return;
