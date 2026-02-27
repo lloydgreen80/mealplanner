@@ -6,28 +6,89 @@
   <title>Meal Planner — Macros</title>
   <meta name="theme-color" content="#0b1224" />
   <style>
-    :root { --bg:#07101b; --card:#0b1224; --muted:#9ca3af; --text:#e6eef6; --accent:#22c55e; --border:#172033; }
+    /* ---------- Theme tokens (lighter palette by default) ---------- */
+    :root{
+      --bg: #f6f7fb;
+      --surface: rgba(255,255,255,.92);
+      --card: rgba(255,255,255,.92);
+      --text: #111827;
+      --muted: #6b7280;
+      --border: rgba(17,24,39,.10);
+      --shadow: 0 10px 30px rgba(17,24,39,.08);
+
+      --good1: #16a34a;
+      --good2: #22c55e;
+      --bad1: #dc2626;
+      --bad2: #ef4444;
+    }
+
+    /* Dark mode overrides */
+    [data-theme="dark"]{
+      --bg: #07101b;
+      --surface: rgba(11,18,36,.55);
+      --card: rgba(13,21,34,.90);
+      --text: #e6eef6;
+      --muted: #9ca3af;
+      --border: #172033;
+      --shadow: 0 10px 30px rgba(0,0,0,.35);
+    }
+
     * { box-sizing: border-box; }
-    body { margin:0; font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial; background:linear-gradient(180deg,#04101a,#07101b); color:var(--text); }
-    header { padding:14px 16px; border-bottom:1px solid var(--border); background:rgba(11,18,36,.55); position:sticky; top:0; backdrop-filter: blur(8px); z-index:5; }
+    body {
+      margin:0;
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial;
+      background: linear-gradient(180deg, var(--bg), color-mix(in srgb, var(--bg) 86%, #000 14%));
+      color: var(--text);
+    }
+
+    header {
+      padding:14px 16px;
+      border-bottom:1px solid var(--border);
+      background: var(--surface);
+      position:sticky;
+      top:0;
+      backdrop-filter: blur(10px);
+      z-index:5;
+    }
+
     main { padding:16px; max-width:1150px; margin:0 auto; display:grid; gap:14px; }
     .grid { display:grid; gap:14px; grid-template-columns: 1.25fr .75fr; }
     @media (max-width:920px){ .grid{ grid-template-columns:1fr } }
 
-    .card { background:rgba(13,21,34,.9); border:1px solid var(--border); border-radius:14px; padding:14px; box-shadow:0 8px 24px rgba(0,0,0,.4); }
+    .card {
+      background: var(--card);
+      border:1px solid var(--border);
+      border-radius:14px;
+      padding:14px;
+      box-shadow: var(--shadow);
+    }
+
     h1 { margin:0; font-size:18px; }
     h2 { margin:0 0 10px; font-size:13px; color:var(--muted); text-transform:uppercase; letter-spacing:.08em; }
 
     .row { display:flex; gap:10px; align-items:center; }
-    input, textarea, button { font:inherit; color:var(--text); background:transparent; border:1px solid var(--border); border-radius:10px; padding:8px 10px; }
-    input::placeholder, textarea::placeholder { color:#6b7280; }
+    input, textarea, button {
+      font:inherit;
+      color:var(--text);
+      background:transparent;
+      border:1px solid var(--border);
+      border-radius:10px;
+      padding:8px 10px;
+    }
+    input::placeholder, textarea::placeholder { color: color-mix(in srgb, var(--muted) 80%, transparent 20%); }
     input[type=number] { max-width:140px; }
+
     button { cursor:pointer; }
-    button.primary { background: linear-gradient(135deg,#16a34a,#22c55e); border-color: rgba(34,197,94,.25); color:#03110a; font-weight:700; }
+    button.primary {
+      background: linear-gradient(135deg,var(--good1),var(--good2));
+      border-color: color-mix(in srgb, var(--good2) 30%, transparent 70%);
+      color: color-mix(in srgb, var(--text) 10%, #000 90%);
+      font-weight:700;
+    }
     .muted { color:var(--muted); font-size:12px; }
     .micro { font-size:12px; color:var(--muted); }
     .smallBtn { padding:6px 8px; border-radius:8px; }
-    .danger { border-color: rgba(239,68,68,.25); color:#fecaca; }
+    .danger { border-color: color-mix(in srgb, var(--bad2) 30%, transparent 70%); color: color-mix(in srgb, var(--bad2) 45%, var(--text) 55%); }
 
     .week { display:grid; gap:12px; }
 
@@ -35,26 +96,35 @@
       border:1px solid var(--border);
       border-radius:14px;
       padding:12px;
-      background:linear-gradient(180deg, rgba(255,255,255,.02), transparent);
+      background: linear-gradient(180deg, color-mix(in srgb, var(--card) 96%, #000 4%), transparent);
       display:grid;
       gap:10px;
     }
+
     .dayHeader { display:flex; justify-content:space-between; gap:10px; align-items:flex-start; flex-wrap:wrap; }
     .dayTitle strong { font-size:14px; }
     .dayTitle .micro { margin-top:2px; }
 
-    .totalsBox { text-align:right; min-width:220px; }
+    .totalsBox { text-align:right; min-width:240px; }
     .totalsBox .kcal { font-size:15px; font-weight:800; }
     .status { margin-top:6px; font-size:12px; }
-    .status.good { color:#86efac; }
-    .status.ok { color:#fde68a; }
-    .status.bad { color:#fca5a5; }
+    .status.good { color: color-mix(in srgb, var(--good2) 70%, var(--text) 30%); }
+    .status.ok { color: #b45309; }
+    [data-theme="dark"] .status.ok { color: #fde68a; }
+    .status.bad { color: color-mix(in srgb, var(--bad2) 70%, var(--text) 30%); }
 
     .progressWrap { margin-top:8px; display:grid; gap:8px; }
-    .progRow { display:grid; grid-template-columns: 64px 1fr 90px; gap:8px; align-items:center; }
+    .progRow { display:grid; grid-template-columns: 64px 1fr 96px; gap:8px; align-items:center; }
     .progLabel { font-size:12px; color:var(--muted); }
-    .bar { height:10px; border-radius:999px; border:1px solid var(--border); overflow:hidden; background:rgba(255,255,255,.02); }
-    .bar > div { height:100%; width:0%; background:linear-gradient(135deg,#16a34a,#22c55e); }
+    .bar {
+      height:10px;
+      border-radius:999px;
+      border:1px solid var(--border);
+      overflow:hidden;
+      background: color-mix(in srgb, var(--card) 92%, #000 8%);
+    }
+    .bar > div { height:100%; width:0%; background: linear-gradient(135deg,var(--good1),var(--good2)); }
+    .bar > div.over { background: linear-gradient(135deg,var(--bad1),var(--bad2)); }
     .progVal { font-size:12px; color:var(--muted); text-align:right; }
 
     .meals { display:grid; gap:8px; }
@@ -66,9 +136,9 @@
       padding:10px;
       border:1px solid var(--border);
       border-radius:12px;
-      background:rgba(11,18,36,.6);
+      background: color-mix(in srgb, var(--card) 90%, #000 10%);
     }
-    .mealRow.dragOver { outline:2px dashed rgba(34,197,94,.55); outline-offset:2px; }
+    .mealRow.dragOver { outline:2px dashed color-mix(in srgb, var(--good2) 55%, transparent 45%); outline-offset:2px; }
     .mealRow[draggable="true"] { cursor: grab; }
     .mealRow:active { cursor: grabbing; }
     @media (max-width:640px){
@@ -81,24 +151,25 @@
       font-size:13px;
       padding:6px 10px;
       border-radius:999px;
-      background:rgba(255,255,255,.02);
+      background: color-mix(in srgb, var(--card) 92%, #000 8%);
       max-width:56vw;
       overflow:hidden;
       text-overflow:ellipsis;
       white-space:nowrap;
     }
-    .pill.empty { color:#6b7280; }
+    .pill.empty { color: color-mix(in srgb, var(--muted) 85%, transparent 15%); }
 
     .list { display:flex; flex-direction:column; gap:8px; max-height:320px; overflow:auto; padding-right:4px; }
     .dish {
       display:flex; justify-content:space-between; align-items:center; gap:10px;
       padding:8px; border-radius:10px; border:1px solid var(--border);
+      background: color-mix(in srgb, var(--card) 96%, #000 4%);
     }
     .dish[draggable="true"] { cursor: grab; }
     .dish small { color:var(--muted); font-size:12px; margin-left:6px; }
 
-    dialog { border:none; border-radius:12px; padding:0; width:min(700px, 94vw); background:var(--card); color:var(--text); }
-    dialog::backdrop { background:rgba(0,0,0,.6); }
+    dialog { border:none; border-radius:12px; padding:0; width:min(700px, 94vw); background:var(--card); color:var(--text); box-shadow: var(--shadow); }
+    dialog::backdrop { background:rgba(0,0,0,.45); }
     .dlg { padding:14px; }
     .footer { display:flex; justify-content:space-between; gap:10px; margin-top:10px; flex-wrap:wrap; }
 
@@ -112,16 +183,44 @@
       padding:10px;
       border-radius:12px;
       border:1px solid var(--border);
-      background:rgba(255,255,255,.02);
+      background: color-mix(in srgb, var(--card) 94%, #000 6%);
       color:var(--muted);
       font-size:12px;
     }
+
+    .headerRight { margin-left:auto; display:flex; gap:8px; align-items:center; }
+    .toggleBtn { display:flex; gap:8px; align-items:center; }
+    .toggleDot {
+      width:34px; height:20px; border-radius:999px;
+      border:1px solid var(--border);
+      background: color-mix(in srgb, var(--card) 92%, #000 8%);
+      position:relative;
+    }
+    .toggleDot::after{
+      content:"";
+      position:absolute; top:50%; transform:translateY(-50%);
+      left:2px; width:16px; height:16px; border-radius:999px;
+      background: linear-gradient(135deg,var(--good1),var(--good2));
+      transition: left .18s ease;
+    }
+    [data-theme="dark"] .toggleDot::after{ left:16px; }
   </style>
 </head>
 <body>
   <header>
-    <h1>Meal Planner — Macros</h1>
-    <div class="micro">Per-serving dish macros + servings per meal. Drag dishes onto meals, or drag meals to swap.</div>
+    <div class="row" style="gap:12px;">
+      <div>
+        <h1>Meal Planner — Macros</h1>
+        <div class="micro">Per-serving dish macros + servings per meal. Drag dishes onto meals, or drag meals to swap.</div>
+      </div>
+
+      <div class="headerRight">
+        <button id="themeToggle" class="smallBtn toggleBtn" type="button" aria-label="Toggle light/dark">
+          <span class="micro" id="themeLabel">Light</span>
+          <span class="toggleDot" aria-hidden="true"></span>
+        </button>
+      </div>
+    </div>
   </header>
 
   <main>
@@ -150,6 +249,7 @@
           Drag & drop:
           <br>• Drag a <b>dish</b> from the right onto a meal slot to set it.
           <br>• Drag a <b>meal slot</b> onto another meal slot to swap them.
+          <br>Macro bars turn <b>red</b> when you go over target.
         </div>
       </section>
 
@@ -248,7 +348,8 @@
 (() => {
   const DAYS = ["Mon","Tue","Wed","Thu","Fri","Sat","Sun"];
   const MEALS = ["Breakfast","Lunch","Dinner"];
-  const KEY = "mealPlanner.macro.v3";
+  const KEY = "mealPlanner.macro.v4";
+  const THEME_KEY = "mealPlanner.theme";
 
   function defaultState() {
     return {
@@ -279,6 +380,38 @@
   function saveState(){ localStorage.setItem(KEY, JSON.stringify(state)); }
   let state = loadState();
 
+  // ---------- Theme ----------
+  function getSystemTheme(){
+    return window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+  }
+  function getTheme(){
+    return localStorage.getItem(THEME_KEY) || getSystemTheme();
+  }
+  function setTheme(theme){
+    document.documentElement.setAttribute("data-theme", theme);
+    localStorage.setItem(THEME_KEY, theme);
+    document.getElementById("themeLabel").textContent = theme === "dark" ? "Dark" : "Light";
+  }
+  setTheme(getTheme());
+  document.getElementById("themeToggle").addEventListener("click", () => {
+    const current = getTheme();
+    setTheme(current === "dark" ? "light" : "dark");
+  });
+
+  // ---------- Dates ----------
+  function formatDate(dateObj){
+    // Uses device/browser locale. If Intl is missing, fallback dd/mm/yyyy.
+    try{
+      return new Intl.DateTimeFormat(undefined, { day:"2-digit", month:"2-digit", year:"numeric" }).format(dateObj);
+    } catch {
+      const d = String(dateObj.getDate()).padStart(2,"0");
+      const m = String(dateObj.getMonth()+1).padStart(2,"0");
+      const y = dateObj.getFullYear();
+      return `${d}/${m}/${y}`;
+    }
+  }
+
+  // week start Monday
   function startOfWeek(date) {
     const d = new Date(date);
     d.setHours(0,0,0,0);
@@ -290,6 +423,7 @@
   function toISO(d){ const x = new Date(d); x.setHours(0,0,0,0); return x.toISOString().slice(0,10); }
   function fmtRange(ws){
     const a = new Date(ws), b = addDays(a,6);
+    // This already respects locale order/formatting
     const opts = { day:"2-digit", month:"short" };
     return `${a.toLocaleDateString(undefined,opts)} – ${b.toLocaleDateString(undefined,opts)} ${a.getFullYear()}`;
   }
@@ -297,11 +431,7 @@
   let weekStart = startOfWeek(new Date());
 
   function emptyMeal(){ return { dishId: null, servings: 1 }; }
-  function emptyDay(){
-    const obj = {};
-    MEALS.forEach(m => obj[m] = emptyMeal());
-    return obj;
-  }
+  function emptyDay(){ const obj = {}; MEALS.forEach(m => obj[m] = emptyMeal()); return obj; }
 
   function ensureWeekPlan(ws=weekStart){
     const key = toISO(ws);
@@ -320,6 +450,7 @@
     return state.planByWeekStart[key];
   }
 
+  // ---------- DOM ----------
   const elWeek = document.getElementById("week");
   const elWeekRange = document.getElementById("weekRange");
   const elDishList = document.getElementById("dishList");
@@ -352,7 +483,12 @@
     if (!el) {
       el = document.createElement("div");
       el.id="__toast";
-      el.style.cssText = "position:fixed;left:50%;bottom:18px;transform:translateX(-50%);background:rgba(10,18,30,.95);padding:10px 14px;border-radius:999px;border:1px solid rgba(255,255,255,.03);box-shadow:0 10px 30px rgba(0,0,0,.4);font-size:13px;color:var(--text);z-index:9999;opacity:0;transition:opacity .15s;";
+      el.style.cssText = `
+        position:fixed;left:50%;bottom:18px;transform:translateX(-50%);
+        background: color-mix(in srgb, var(--card) 96%, #000 4%);
+        padding:10px 14px;border-radius:999px;border:1px solid var(--border);
+        box-shadow: var(--shadow);font-size:13px;color:var(--text);z-index:9999;
+        opacity:0;transition:opacity .15s;`;
       document.body.appendChild(el);
     }
     el.textContent = msg;
@@ -430,6 +566,7 @@
   function pct(actual, target){
     if (!target || target <= 0) return 0;
     const p = (actual / target) * 100;
+    // allow over-target visibility, but cap
     return Math.max(0, Math.min(140, p));
   }
 
@@ -452,6 +589,7 @@
     );
   }
 
+  // ---------- Rendering ----------
   function render(){
     elWeekRange.textContent = fmtRange(weekStart);
     renderTargetsUI();
@@ -475,15 +613,17 @@
       { label:"Carb", a:tot.carbs, t:tar.carbs },
       { label:"Fat", a:tot.fat, t:tar.fat },
     ];
+
     return `
       <div class="progressWrap">
         ${rows.map(r => {
           const p = pct(r.a, r.t);
+          const over = (r.t && r.a > r.t);
           const shown = r.t ? `${Math.round(r.a)}/${Math.round(r.t)}` : `${Math.round(r.a)}/–`;
           return `
             <div class="progRow">
               <div class="progLabel">${r.label}</div>
-              <div class="bar"><div style="width:${p}%"></div></div>
+              <div class="bar"><div class="${over ? "over" : ""}" style="width:${p}%"></div></div>
               <div class="progVal">${shown}</div>
             </div>
           `;
@@ -497,7 +637,7 @@
     elWeek.innerHTML = "";
 
     DAYS.forEach((day, idx) => {
-      const date = toISO(addDays(weekStart, idx));
+      const dateObj = addDays(weekStart, idx);
       const dayObj = plan[day];
       const tot = dayTotals(dayObj);
       const st = dayStatus(tot);
@@ -508,7 +648,7 @@
         <div class="dayHeader">
           <div class="dayTitle">
             <strong>${day}</strong>
-            <div class="micro">${date}</div>
+            <div class="micro">${formatDate(dateObj)}</div>
           </div>
           <div class="totalsBox">
             <div class="kcal">${Math.round(tot.cal)} kcal</div>
@@ -556,13 +696,13 @@
         </div>
       `;
 
-      // wire up buttons + drag/drop for meal slots
+      // Wire up buttons + drag/drop
       wrap.querySelectorAll(".mealRow").forEach(row => {
         row.querySelector("button[data-edit]").addEventListener("click", () => {
           openPicker(row.dataset.day, row.dataset.meal);
         });
 
-        // ---- FIXED DRAG PAYLOAD TYPE: text/plain ----
+        // Drag payload: text/plain for compatibility
         row.addEventListener("dragstart", (ev) => {
           const payload = { type:"mealSlot", day: row.dataset.day, meal: row.dataset.meal };
           ev.dataTransfer.setData("text/plain", JSON.stringify(payload));
@@ -570,10 +710,9 @@
         });
 
         row.addEventListener("dragover", (ev) => {
-          ev.preventDefault(); // MUST be here or drop gets rejected
+          ev.preventDefault();
           row.classList.add("dragOver");
 
-          // decide copy vs move based on payload type (prevents 🚫 cursor)
           const raw = ev.dataTransfer.getData("text/plain");
           try {
             const payload = JSON.parse(raw || "{}");
@@ -582,13 +721,13 @@
             ev.dataTransfer.dropEffect = "move";
           }
         });
+
         row.addEventListener("dragleave", () => row.classList.remove("dragOver"));
 
         row.addEventListener("drop", (ev) => {
           ev.preventDefault();
           row.classList.remove("dragOver");
 
-          // ---- FIXED: read from text/plain ----
           const json = ev.dataTransfer.getData("text/plain");
           if (!json) return;
 
@@ -610,16 +749,13 @@
           if (payload.type === "mealSlot") {
             const fromDay = payload.day;
             const fromMeal = payload.meal;
-
             const a = plan[fromDay][fromMeal];
             const b = plan[targetDay][targetMeal];
             plan[fromDay][fromMeal] = b;
             plan[targetDay][targetMeal] = a;
-
             saveState();
             renderWeek();
             toast("Meals swapped");
-            return;
           }
         });
       });
@@ -631,11 +767,13 @@
   function renderDishList(){
     const list = filteredDishes(elSearch.value);
     elDishList.innerHTML = "";
+
     list.forEach(d => {
       const el = document.createElement("div");
       el.className = "dish";
       el.setAttribute("draggable","true");
       el.dataset.dishId = d.id;
+
       el.innerHTML = `
         <div>
           <div><strong>${d.name}</strong> <small class="micro">(${d.cal} kcal, ${d.protein}P, ${d.carbs}C, ${d.fat}F)</small></div>
@@ -647,7 +785,6 @@
         </div>
       `;
 
-      // ---- FIXED DRAG PAYLOAD TYPE: text/plain ----
       el.addEventListener("dragstart", (ev) => {
         const payload = { type:"dish", dishId: d.id };
         ev.dataTransfer.setData("text/plain", JSON.stringify(payload));
@@ -662,6 +799,7 @@
     elCount.textContent = `${state.dishes.length} dish${state.dishes.length===1? "" : "es"}`;
   }
 
+  // ---------- Dish CRUD ----------
   function saveDishFromForm(){
     const name = normalizeName(elDishName.value);
     if (!name) return toast("Name required");
@@ -725,6 +863,7 @@
     render();
   }
 
+  // ---------- Targets ----------
   function saveTargets(){
     state.targets = {
       cal: Number(tCal.value) || 0,
@@ -737,6 +876,7 @@
     renderWeek();
   }
 
+  // ---------- Picker ----------
   function openPicker(day, meal){
     activeDay = day;
     activeMeal = meal;
@@ -790,6 +930,7 @@
     renderWeek();
   }
 
+  // ---------- Helpers ----------
   function shuffleArray(a){
     const arr=[...a];
     for(let i=arr.length-1;i>0;i--){
@@ -845,17 +986,12 @@
 
     for (const day of DAYS) {
       const dayObj = plan[day];
-
       for (const meal of MEALS) {
         const isEmpty = !dayObj[meal]?.dishId;
         if (onlyEmpty && !isEmpty) continue;
 
-        let pickId;
-        if (smart) pickId = smartPickDishForDay(dayObj, usedWeek);
-        else {
-          const ids = shuffleArray(state.dishes.map(d=>d.id));
-          pickId = ids.find(id => !usedWeek.has(id)) || ids[0];
-        }
+        const pickId = smart ? smartPickDishForDay(dayObj, usedWeek)
+                             : (shuffleArray(state.dishes.map(d=>d.id)).find(id => !usedWeek.has(id)) || state.dishes[0].id);
 
         if (!pickId) continue;
         dayObj[meal] = { dishId: pickId, servings: 1 };
@@ -893,7 +1029,7 @@
       `Targets: ${tar.cal||0} kcal, ${tar.protein||0}g P, ${tar.carbs||0}g C, ${tar.fat||0}g F\n\n`;
 
     const text = header + DAYS.map((day, idx) => {
-      const date = toISO(addDays(weekStart, idx));
+      const dateObj = addDays(weekStart, idx);
       const dayObj = plan[day];
       const tot = dayTotals(dayObj);
       const st = dayStatus(tot);
@@ -910,7 +1046,7 @@
         return `  - ${meal}: ${name} — ${s} serving(s) — ${cal} kcal, ${p}P ${c}C ${f}F`;
       }).join("\n");
 
-      return `${day} (${date}) — Total: ${Math.round(tot.cal)} kcal, ${Math.round(tot.protein)}P ${Math.round(tot.carbs)}C ${Math.round(tot.fat)}F — ${st.icon} ${st.label}\n${mealLines}`;
+      return `${day} (${formatDate(dateObj)}) — Total: ${Math.round(tot.cal)} kcal, ${Math.round(tot.protein)}P ${Math.round(tot.carbs)}C ${Math.round(tot.fat)}F — ${st.icon} ${st.label}\n${mealLines}`;
     }).join("\n\n");
 
     navigator.clipboard?.writeText(text).then(()=>toast("Copied")).catch(()=>toast("Couldn't copy"));
@@ -920,7 +1056,9 @@
     const plan = ensureWeekPlan();
     const rows = [["day","date","meal","dish","servings","calories","protein_g","carbs_g","fat_g"]];
     DAYS.forEach((day, idx) => {
-      const date = toISO(addDays(weekStart, idx));
+      const dateObj = addDays(weekStart, idx);
+      const dateStr = formatDate(dateObj);
+
       MEALS.forEach(meal => {
         const e = plan[day][meal];
         const d = e?.dishId ? getDish(e.dishId) : null;
@@ -930,10 +1068,11 @@
         const p = d ? (Number(d.protein)||0) * s : 0;
         const c = d ? (Number(d.carbs)||0) * s : 0;
         const f = d ? (Number(d.fat)||0) * s : 0;
-        rows.push([day, date, meal, name, s, Math.round(cal), Math.round(p), Math.round(c), Math.round(f)]);
+        rows.push([day, dateStr, meal, name, s, Math.round(cal), Math.round(p), Math.round(c), Math.round(f)]);
       });
+
       const tot = dayTotals(plan[day]);
-      rows.push([day, date, "TOTAL", "", "", Math.round(tot.cal), Math.round(tot.protein), Math.round(tot.carbs), Math.round(tot.fat)]);
+      rows.push([day, dateStr, "TOTAL", "", "", Math.round(tot.cal), Math.round(tot.protein), Math.round(tot.carbs), Math.round(tot.fat)]);
     });
 
     const csv = rows.map(r => r.map(cell => `"${String(cell).replace(/"/g,'""')}"`).join(",")).join("\n");
@@ -976,6 +1115,7 @@
     renderDishList();
   }
 
+  // ---------- Wire up ----------
   document.getElementById("saveTargets").addEventListener("click", saveTargets);
   document.getElementById("saveDish").addEventListener("click", saveDishFromForm);
   elDishName.addEventListener("keydown", (e)=>{ if(e.key==="Enter"){ e.preventDefault(); saveDishFromForm(); } });
@@ -1007,28 +1147,7 @@
     render();
   });
 
-  function openPicker(day, meal){
-    activeDay = day;
-    activeMeal = meal;
-    pickTitle.textContent = `Pick for ${day} — ${meal}`;
-    pickSearch.value = "";
-    const plan = ensureWeekPlan();
-    servingsInput.value = plan[day][meal]?.servings ?? 1;
-    renderPicker();
-    dlg.showModal();
-    pickSearch.focus();
-  }
-
-  function clearActiveMeal(){
-    if (!activeDay || !activeMeal) return;
-    const plan = ensureWeekPlan();
-    plan[activeDay][activeMeal] = emptyMeal();
-    saveState();
-    dlg.close();
-    toast("Cleared");
-    renderWeek();
-  }
-
+  // ---------- Initial render ----------
   render();
 })();
 </script>
