@@ -1,0 +1,516 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Weekly Meal Planner</title>
+  <meta name="theme-color" content="#111827" />
+  <style>
+    :root { --bg:#0b1020; --card:#111827; --muted:#9ca3af; --text:#e5e7eb; --accent:#22c55e; --border:#1f2937; }
+    * { box-sizing: border-box; }
+    body { margin:0; font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; background:linear-gradient(180deg,#070a14, #0b1020); color:var(--text); }
+    header { position: sticky; top:0; background:rgba(11,16,32,.85); backdrop-filter: blur(10px); border-bottom:1px solid var(--border); padding:14px 16px; z-index:5; }
+    h1 { margin:0; font-size:18px; letter-spacing:.2px; }
+    main { padding:16px; max-width:920px; margin:0 auto; display:grid; gap:14px; }
+    .grid { display:grid; gap:14px; grid-template-columns: 1fr; }
+    @media (min-width: 860px) { .grid { grid-template-columns: 1.2fr .8fr; } }
+
+    .card { background:rgba(17,24,39,.92); border:1px solid var(--border); border-radius:16px; padding:14px; box-shadow: 0 10px 30px rgba(0,0,0,.25); }
+    .card h2 { margin:0 0 10px; font-size:14px; color:var(--muted); font-weight:600; text-transform:uppercase; letter-spacing:.08em; }
+
+    .row { display:flex; gap:10px; align-items:center; }
+    input, textarea, button, select {
+      font: inherit; color:var(--text);
+      background:#0b1224; border:1px solid var(--border);
+      border-radius:12px; padding:10px 12px;
+      outline:none;
+    }
+    input::placeholder, textarea::placeholder { color:#6b7280; }
+    textarea { width:100%; min-height:72px; resize:vertical; }
+    button { cursor:pointer; }
+    button.primary { background: linear-gradient(135deg, #16a34a, #22c55e); border-color: rgba(34,197,94,.35); color:#03110a; font-weight:700; }
+    button.ghost { background: transparent; }
+    button:active { transform: translateY(1px); }
+    .muted { color:var(--muted); font-size:12px; }
+
+    .week { display:grid; gap:10px; }
+    .day {
+      display:flex; justify-content:space-between; align-items:center; gap:10px;
+      padding:12px; border-radius:14px; border:1px solid var(--border); background:#0b1224;
+    }
+    .day strong { font-size:14px; }
+    .pill { font-size:12px; padding:6px 10px; border-radius:999px; border:1px solid var(--border); background:rgba(255,255,255,.03); color:var(--text); max-width:55vw; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+    .pill.empty { color:#6b7280; }
+    .actions { display:flex; gap:10px; flex-wrap:wrap; }
+    .list { display:flex; flex-direction:column; gap:8px; max-height:320px; overflow:auto; padding-right:4px; }
+    .dish {
+      display:flex; justify-content:space-between; align-items:center; gap:10px;
+      padding:10px; border-radius:12px; border:1px solid var(--border); background:#0b1224;
+    }
+    .dish span { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+    .dish button { padding:8px 10px; border-radius:10px; }
+    .danger { border-color: rgba(239,68,68,.35); color:#fecaca; }
+    .toast {
+      position: fixed; left:50%; bottom:18px; transform: translateX(-50%);
+      background: rgba(17,24,39,.95); border:1px solid var(--border);
+      padding:10px 12px; border-radius:999px; font-size:13px; color:var(--text);
+      box-shadow: 0 10px 30px rgba(0,0,0,.35);
+      opacity:0; pointer-events:none; transition: opacity .2s ease;
+    }
+    .toast.show { opacity:1; }
+    dialog { border:none; border-radius:16px; padding:0; width:min(560px, 92vw); background:var(--card); color:var(--text); }
+    dialog::backdrop { background: rgba(0,0,0,.55); }
+    .dlg { padding:14px; border:1px solid var(--border); border-radius:16px; }
+    .dlg h3 { margin:0 0 10px; font-size:16px; }
+    .dlg .list { max-height: 50vh; }
+    .dlg .dish { cursor:pointer; }
+    .dlg .dish:hover { border-color: rgba(34,197,94,.4); }
+    .footer { display:flex; justify-content:space-between; gap:10px; margin-top:10px; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Weekly Meal Planner</h1>
+    <div class="muted" id="subtitle"></div>
+  </header>
+
+  <main>
+    <div class="grid">
+      <section class="card">
+        <h2>Week plan</h2>
+        <div class="row" style="justify-content:space-between; margin-bottom:10px;">
+          <div class="row">
+            <button class="ghost" id="prevWeek" aria-label="Previous week">←</button>
+            <button class="ghost" id="nextWeek" aria-label="Next week">→</button>
+          </div>
+          <div class="actions">
+            <button id="fillEmpty">Fill empty</button>
+            <button id="shuffleWeek">Shuffle week</button>
+            <button class="primary" id="copyPlan">Copy plan</button>
+          </div>
+        </div>
+        <div class="week" id="week"></div>
+        <div class="muted" style="margin-top:10px;">
+          Tip: tap a day to pick a dish. Everything saves automatically on this device.
+        </div>
+      </section>
+
+      <section class="card">
+        <h2>Dishes</h2>
+
+        <div class="row" style="margin-bottom:10px;">
+          <input id="search" placeholder="Search dishes…" style="flex:1;" />
+          <button id="clearSearch" class="ghost" aria-label="Clear search">✕</button>
+        </div>
+
+        <div class="row" style="margin-bottom:10px;">
+          <input id="newDish" placeholder="Add a dish name…" style="flex:1;" />
+          <button class="primary" id="addDish">Add</button>
+        </div>
+
+        <details style="margin-bottom:10px;">
+          <summary class="muted" style="cursor:pointer;">Import many dishes</summary>
+          <div style="margin-top:10px;">
+            <textarea id="bulk" placeholder="Paste one dish per line…"></textarea>
+            <div class="row" style="justify-content:space-between; margin-top:10px;">
+              <span class="muted">Duplicates are ignored.</span>
+              <button id="importBulk">Import</button>
+            </div>
+          </div>
+        </details>
+
+        <div class="list" id="dishList"></div>
+        <div class="row" style="justify-content:space-between; margin-top:10px;">
+          <span class="muted" id="count"></span>
+          <button id="reset" class="danger">Reset data</button>
+        </div>
+      </section>
+    </div>
+  </main>
+
+  <dialog id="picker">
+    <div class="dlg">
+      <h3 id="pickTitle">Pick a dish</h3>
+      <div class="row" style="margin-bottom:10px;">
+        <input id="pickSearch" placeholder="Search…" style="flex:1;" />
+        <button class="ghost" id="pickClear">✕</button>
+      </div>
+      <div class="list" id="pickList"></div>
+      <div class="footer">
+        <button id="clearDay" class="danger">Clear day</button>
+        <button id="closePicker">Close</button>
+      </div>
+    </div>
+  </dialog>
+
+  <div class="toast" id="toast"></div>
+
+<script>
+(() => {
+  const DAYS = ["Mon","Tue","Wed","Thu","Fri","Sat","Sun"];
+
+  // ---------- Storage ----------
+  const KEY = "mealPlanner.v1";
+  const defaultState = () => ({
+    dishes: [
+      // starter examples (you can delete)
+      { id: crypto.randomUUID(), name: "Pasta bake" },
+      { id: crypto.randomUUID(), name: "Tacos" },
+      { id: crypto.randomUUID(), name: "Stir-fry" },
+      { id: crypto.randomUUID(), name: "Curry" }
+    ],
+    // planByWeekStart: { "YYYY-MM-DD": { Mon:dishId|null, ... } }
+    planByWeekStart: {}
+  });
+
+  function loadState() {
+    try {
+      const raw = localStorage.getItem(KEY);
+      if (!raw) return defaultState();
+      const parsed = JSON.parse(raw);
+      if (!parsed.dishes || !parsed.planByWeekStart) return defaultState();
+      return parsed;
+    } catch {
+      return defaultState();
+    }
+  }
+  function saveState() {
+    localStorage.setItem(KEY, JSON.stringify(state));
+  }
+
+  let state = loadState();
+
+  // ---------- Dates / week handling ----------
+  // Week starts Monday (Europe/London friendly)
+  function toISODate(d) {
+    const x = new Date(d);
+    x.setHours(0,0,0,0);
+    const yyyy = x.getFullYear();
+    const mm = String(x.getMonth()+1).padStart(2,"0");
+    const dd = String(x.getDate()).padStart(2,"0");
+    return `${yyyy}-${mm}-${dd}`;
+  }
+  function startOfWeek(date) {
+    const d = new Date(date);
+    d.setHours(0,0,0,0);
+    const day = (d.getDay() + 6) % 7; // Mon=0 ... Sun=6
+    d.setDate(d.getDate() - day);
+    return d;
+  }
+  function addDays(date, n) {
+    const d = new Date(date);
+    d.setDate(d.getDate() + n);
+    return d;
+  }
+  function fmtRange(weekStart) {
+    const a = new Date(weekStart);
+    const b = addDays(a, 6);
+    const opts = { day:"2-digit", month:"short" };
+    const year = a.getFullYear();
+    return `${a.toLocaleDateString(undefined, opts)} – ${b.toLocaleDateString(undefined, opts)} ${year}`;
+  }
+
+  let weekStart = startOfWeek(new Date());
+
+  function ensureWeekPlan() {
+    const key = toISODate(weekStart);
+    if (!state.planByWeekStart[key]) {
+      state.planByWeekStart[key] = Object.fromEntries(DAYS.map(d => [d, null]));
+      saveState();
+    }
+    return state.planByWeekStart[key];
+  }
+
+  // ---------- UI refs ----------
+  const elWeek = document.getElementById("week");
+  const elSubtitle = document.getElementById("subtitle");
+  const elDishList = document.getElementById("dishList");
+  const elCount = document.getElementById("count");
+  const elSearch = document.getElementById("search");
+  const elNewDish = document.getElementById("newDish");
+  const elBulk = document.getElementById("bulk");
+  const toastEl = document.getElementById("toast");
+
+  const dlg = document.getElementById("picker");
+  const pickTitle = document.getElementById("pickTitle");
+  const pickSearch = document.getElementById("pickSearch");
+  const pickList = document.getElementById("pickList");
+
+  let activeDay = null;
+
+  function toast(msg) {
+    toastEl.textContent = msg;
+    toastEl.classList.add("show");
+    setTimeout(() => toastEl.classList.remove("show"), 1400);
+  }
+
+  // ---------- Helpers ----------
+  function normalizeName(s) {
+    return s.trim().replace(/\s+/g, " ");
+  }
+  function sortByName(a, b) {
+    return a.name.localeCompare(b.name, undefined, { sensitivity:"base" });
+  }
+  function getDishName(id) {
+    const d = state.dishes.find(x => x.id === id);
+    return d ? d.name : "";
+  }
+  function filteredDishes(query) {
+    const q = query.trim().toLowerCase();
+    const arr = [...state.dishes].sort(sortByName);
+    if (!q) return arr;
+    return arr.filter(d => d.name.toLowerCase().includes(q));
+  }
+
+  // ---------- Render ----------
+  function render() {
+    const plan = ensureWeekPlan();
+    elSubtitle.textContent = fmtRange(weekStart);
+
+    // Week
+    elWeek.innerHTML = "";
+    DAYS.forEach((day, idx) => {
+      const date = addDays(weekStart, idx);
+      const iso = toISODate(date);
+      const dishId = plan[day];
+      const name = dishId ? getDishName(dishId) : "";
+      const row = document.createElement("div");
+      row.className = "day";
+      row.innerHTML = `
+        <div style="min-width:110px;">
+          <strong>${day}</strong>
+          <div class="muted">${iso}</div>
+        </div>
+        <div class="pill ${name ? "" : "empty"}" title="${name || "Tap to choose"}">
+          ${name || "Tap to choose"}
+        </div>
+      `;
+      row.addEventListener("click", () => openPicker(day));
+      elWeek.appendChild(row);
+    });
+
+    // Dish list
+    const list = filteredDishes(elSearch.value);
+    elDishList.innerHTML = "";
+    list.forEach(d => {
+      const row = document.createElement("div");
+      row.className = "dish";
+      row.innerHTML = `
+        <span title="${d.name}">${d.name}</span>
+        <button class="danger" aria-label="Delete ${d.name}">Delete</button>
+      `;
+      row.querySelector("button").addEventListener("click", () => deleteDish(d.id));
+      elDishList.appendChild(row);
+    });
+
+    elCount.textContent = `${state.dishes.length} dish${state.dishes.length === 1 ? "" : "es"}`;
+  }
+
+  // ---------- Dish operations ----------
+  function addDish(name) {
+    const n = normalizeName(name);
+    if (!n) return;
+    const exists = state.dishes.some(d => d.name.toLowerCase() === n.toLowerCase());
+    if (exists) { toast("Already in list"); return; }
+    state.dishes.push({ id: crypto.randomUUID(), name: n });
+    saveState();
+    toast("Added");
+    render();
+  }
+
+  function deleteDish(id) {
+    // Remove from dish list
+    state.dishes = state.dishes.filter(d => d.id !== id);
+
+    // Remove from any weeks where used
+    for (const wk of Object.keys(state.planByWeekStart)) {
+      for (const day of DAYS) {
+        if (state.planByWeekStart[wk][day] === id) state.planByWeekStart[wk][day] = null;
+      }
+    }
+    saveState();
+    toast("Deleted");
+    render();
+  }
+
+  // ---------- Picker dialog ----------
+  function openPicker(day) {
+    activeDay = day;
+    pickTitle.textContent = `Pick for ${day}`;
+    pickSearch.value = "";
+    renderPicker();
+    dlg.showModal();
+    pickSearch.focus();
+  }
+
+  function renderPicker() {
+    const list = filteredDishes(pickSearch.value);
+    pickList.innerHTML = "";
+    if (list.length === 0) {
+      const empty = document.createElement("div");
+      empty.className = "muted";
+      empty.style.padding = "10px 2px";
+      empty.textContent = "No dishes match.";
+      pickList.appendChild(empty);
+      return;
+    }
+    list.forEach(d => {
+      const row = document.createElement("div");
+      row.className = "dish";
+      row.innerHTML = `<span>${d.name}</span><span class="muted">Tap</span>`;
+      row.addEventListener("click", () => {
+        const plan = ensureWeekPlan();
+        plan[activeDay] = d.id;
+        saveState();
+        dlg.close();
+        toast("Saved");
+        render();
+      });
+      pickList.appendChild(row);
+    });
+  }
+
+  // ---------- Planning logic ----------
+  function shuffleArray(arr) {
+    const a = [...arr];
+    for (let i = a.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [a[i], a[j]] = [a[j], a[i]];
+    }
+    return a;
+  }
+
+  function fillWeek({ onlyEmpty }) {
+    const plan = ensureWeekPlan();
+    if (state.dishes.length === 0) { toast("Add some dishes first"); return; }
+
+    const used = new Set(Object.values(plan).filter(Boolean));
+    const dishIds = state.dishes.map(d => d.id);
+    let pool = shuffleArray(dishIds);
+
+    DAYS.forEach(day => {
+      const isEmpty = !plan[day];
+      if (onlyEmpty && !isEmpty) return;
+
+      // pick first not already used (avoid repeats in week)
+      let pick = pool.find(id => !used.has(id));
+      // if you have fewer dishes than days, allow repeats
+      if (!pick) pick = pool[Math.floor(Math.random() * pool.length)];
+
+      plan[day] = pick;
+      used.add(pick);
+      // rotate pool a bit
+      pool = shuffleArray(pool);
+    });
+
+    saveState();
+    toast(onlyEmpty ? "Filled empties" : "Shuffled");
+    render();
+  }
+
+  function copyPlan() {
+    const plan = ensureWeekPlan();
+    const lines = DAYS.map((day, idx) => {
+      const date = toISODate(addDays(weekStart, idx));
+      const name = plan[day] ? getDishName(plan[day]) : "(empty)";
+      return `${day} (${date}): ${name}`;
+    });
+    const text = `Meal plan — ${fmtRange(weekStart)}\n` + lines.join("\n");
+    navigator.clipboard?.writeText(text)
+      .then(() => toast("Copied"))
+      .catch(() => {
+        // Fallback
+        const ta = document.createElement("textarea");
+        ta.value = text;
+        document.body.appendChild(ta);
+        ta.select();
+        document.execCommand("copy");
+        document.body.removeChild(ta);
+        toast("Copied");
+      });
+  }
+
+  // ---------- Wire up controls ----------
+  document.getElementById("addDish").addEventListener("click", () => {
+    addDish(elNewDish.value);
+    elNewDish.value = "";
+    elNewDish.focus();
+  });
+  elNewDish.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      addDish(elNewDish.value);
+      elNewDish.value = "";
+    }
+  });
+
+  document.getElementById("importBulk").addEventListener("click", () => {
+    const lines = elBulk.value.split("\n").map(normalizeName).filter(Boolean);
+    if (lines.length === 0) return;
+    let added = 0;
+    lines.forEach(name => {
+      const exists = state.dishes.some(d => d.name.toLowerCase() === name.toLowerCase());
+      if (!exists) {
+        state.dishes.push({ id: crypto.randomUUID(), name });
+        added++;
+      }
+    });
+    saveState();
+    toast(`Imported ${added}`);
+    render();
+  });
+
+  elSearch.addEventListener("input", render);
+  document.getElementById("clearSearch").addEventListener("click", () => {
+    elSearch.value = "";
+    render();
+    elSearch.focus();
+  });
+
+  document.getElementById("fillEmpty").addEventListener("click", () => fillWeek({ onlyEmpty:true }));
+  document.getElementById("shuffleWeek").addEventListener("click", () => fillWeek({ onlyEmpty:false }));
+  document.getElementById("copyPlan").addEventListener("click", copyPlan);
+
+  document.getElementById("prevWeek").addEventListener("click", () => {
+    weekStart = addDays(weekStart, -7);
+    render();
+  });
+  document.getElementById("nextWeek").addEventListener("click", () => {
+    weekStart = addDays(weekStart, 7);
+    render();
+  });
+
+  pickSearch.addEventListener("input", renderPicker);
+  document.getElementById("pickClear").addEventListener("click", () => {
+    pickSearch.value = "";
+    renderPicker();
+    pickSearch.focus();
+  });
+  document.getElementById("closePicker").addEventListener("click", () => dlg.close());
+  document.getElementById("clearDay").addEventListener("click", () => {
+    if (!activeDay) return;
+    const plan = ensureWeekPlan();
+    plan[activeDay] = null;
+    saveState();
+    dlg.close();
+    toast("Cleared");
+    render();
+  });
+
+  document.getElementById("reset").addEventListener("click", () => {
+    const ok = confirm("Reset dishes + plans on this device?");
+    if (!ok) return;
+    localStorage.removeItem(KEY);
+    state = defaultState();
+    weekStart = startOfWeek(new Date());
+    saveState();
+    toast("Reset");
+    render();
+  });
+
+  // First render
+  render();
+})();
+</script>
+</body>
+</html>
