@@ -131,7 +131,6 @@
       border-color: color-mix(in srgb, var(--bad2) 35%, var(--border) 65%);
       color: color-mix(in srgb, var(--bad2) 70%, var(--text) 30%);
     }
-    .iconBtn:hover{ filter: brightness(0.98); }
 
     .totalsBox{ text-align:right; min-width:240px; }
     .totalsBox .kcal{ font-size:15px; font-weight:800; }
@@ -246,6 +245,21 @@
     .checkRow input{ width:16px; height:16px; }
 
     .toastWarn { border-color: color-mix(in srgb, var(--warn2) 40%, var(--border) 60%) !important; }
+
+    /* Weather display */
+    .weatherPill{
+      display:inline-flex;
+      align-items:center;
+      gap:6px;
+      border:1px solid var(--border);
+      background: color-mix(in srgb, var(--card) 92%, #000 8%);
+      padding:6px 8px;
+      border-radius:999px;
+      margin-left:8px;
+      white-space:nowrap;
+    }
+    .weatherIcon{ font-size:14px; }
+    .weatherTemp{ font-size:12px; color:var(--muted); }
   </style>
 </head>
 
@@ -291,8 +305,8 @@
         <div class="week" id="week"></div>
 
         <div class="hintBox">
-          Bar colouring: under target = amber, on target (exact) = green, any over target = red.
-          <br>Drop warning: if you drop a dish into a meal it isn’t tagged for, you’ll get a warning (it still assigns).
+          Bar colouring: under target = amber, exact target = green, any over target = red.
+          <br>Weather: set a location in the sidebar (use GPS or search a city). Display shows daily icon + max/min °C.
         </div>
       </section>
 
@@ -317,8 +331,26 @@
           </div>
         </div>
         <div class="row" style="justify-content:space-between; margin-bottom:14px;">
-          <div class="muted">Used by smart fill + daily progress bars.</div>
+          <div class="muted">Used by smart fill + daily bars.</div>
           <button id="saveTargets" class="smallBtn">Save targets</button>
+        </div>
+
+        <h2>Weather</h2>
+        <div style="display:grid; gap:8px; margin-bottom:14px;">
+          <div class="row" style="justify-content:space-between; flex-wrap:wrap;">
+            <label class="muted" style="display:flex; gap:8px; align-items:center;">
+              <input id="showWeather" type="checkbox" style="width:16px;height:16px;" />
+              Show weather on days
+            </label>
+            <button id="useMyLocation" class="smallBtn">Use my location</button>
+          </div>
+
+          <div class="row">
+            <input id="locationQuery" placeholder="Search a place (e.g. London)" style="flex:1;" />
+            <button id="findLocation" class="smallBtn">Find</button>
+          </div>
+
+          <div class="muted" id="locationStatus">No location set.</div>
         </div>
 
         <h2>Dishes & Macros</h2>
@@ -402,9 +434,9 @@
 
 <script>
 (() => {
-  const DAYS = ["Mon","Tue","Wed","Thu","Fri","Sat","Sun"];
+  const DAYS = ["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday","Sunday"];
   const MEALS = ["Breakfast","Lunch","Dinner"];
-  const KEY = "mealPlanner.macro.v8";
+  const KEY = "mealPlanner.macro.v9";
   const THEME_KEY = "mealPlanner.theme";
 
   function defaultState() {
@@ -415,13 +447,21 @@
         { id: crypto.randomUUID(), name: "Overnight oats", cal: 420, protein: 18, carbs: 55, fat: 12, book: "Breakfast Club", page: 12, categories: { Breakfast:true, Lunch:false, Dinner:false } },
         { id: crypto.randomUUID(), name: "Chicken & rice", cal: 520, protein: 40, carbs: 55, fat: 10, book: "", page: null, categories: { Breakfast:false, Lunch:true, Dinner:true } }
       ],
-      planByWeekStart: {}
+      planByWeekStart: {},
+      weather: {
+        enabled: false,
+        locationName: "",
+        lat: null,
+        lon: null,
+        tz: Intl.DateTimeFormat().resolvedOptions().timeZone || "auto",
+        // cache keyed by weekStart ISO
+        cacheByWeek: {}
+      }
     };
   }
 
   function loadState() {
-    // Try newest key first, but also migrate older versions if present
-    const tryKeys = [KEY, "mealPlanner.macro.v7", "mealPlanner.macro.v6", "mealPlanner.macro.v5"];
+    const tryKeys = [KEY, "mealPlanner.macro.v8", "mealPlanner.macro.v7", "mealPlanner.macro.v6", "mealPlanner.macro.v5"];
     for (const k of tryKeys) {
       const raw = localStorage.getItem(k);
       if (!raw) continue;
@@ -440,6 +480,9 @@
         }));
         parsed.targets = { fat: 0, ...parsed.targets };
 
+        if (!parsed.weather) parsed.weather = defaultState().weather;
+        parsed.weather = { ...defaultState().weather, ...parsed.weather };
+
         // ensure plan structure
         for (const wk of Object.keys(parsed.planByWeekStart)) {
           for (const day of DAYS) {
@@ -452,12 +495,9 @@
           }
         }
 
-        // save migrated state into newest key
         localStorage.setItem(KEY, JSON.stringify(parsed));
         return parsed;
-      } catch {
-        // ignore and continue
-      }
+      } catch {}
     }
     return defaultState();
   }
@@ -560,6 +600,13 @@
   const pickSearch = document.getElementById("pickSearch");
   const pickList = document.getElementById("pickList");
 
+  // Weather UI
+  const showWeather = document.getElementById("showWeather");
+  const useMyLocation = document.getElementById("useMyLocation");
+  const locationQuery = document.getElementById("locationQuery");
+  const findLocation = document.getElementById("findLocation");
+  const locationStatus = document.getElementById("locationStatus");
+
   let activeDay = null;
   let activeMeal = null;
 
@@ -627,7 +674,6 @@
       if (!entry?.dishId) return;
       const d = getDish(entry.dishId);
       if (!d) return;
-      // per-serving macros; ignore servings
       cal += (Number(d.cal)||0);
       protein += (Number(d.protein)||0);
       carbs += (Number(d.carbs)||0);
@@ -636,14 +682,9 @@
     return { cal, protein, carbs, fat };
   }
 
-  function hasTargets(){
-    const tar = state.targets || {};
-    return (tar.cal||0) > 0 || (tar.protein||0) > 0 || (tar.carbs||0) > 0 || (tar.fat||0) > 0;
-  }
-
-  // Colour rule requested:
+  // Macro colour rule:
   // under target => amber
-  // exact/on target => green (we'll treat equality as green)
+  // exact target => green
   // any over target => red
   function macroClass(actual, target){
     if (!target || target <= 0) return "neutral";
@@ -654,7 +695,6 @@
 
   function macroFillPct(actual, target){
     if (!target || target <= 0) return 0;
-    // show how close you are; allow a little overfill but cap visually
     return Math.max(0, Math.min(130, (actual / target) * 100));
   }
 
@@ -690,7 +730,12 @@
     return state.dishes.filter(d => !!d.categories?.[meal]);
   }
 
-  // score helpers for smart fill (still uses targets)
+  function hasTargets(){
+    const tar = state.targets || {};
+    return (tar.cal||0) > 0 || (tar.protein||0) > 0 || (tar.carbs||0) > 0 || (tar.fat||0) > 0;
+  }
+
+  // smart fill score
   function scoreAgainstTargets(tot){
     const tar = state.targets || { cal:0, protein:0, carbs:0, fat:0 };
     if (!hasTargets()) return 0;
@@ -740,6 +785,155 @@
     return best?.id ?? null;
   }
 
+  // ---------- Weather ----------
+  // Open-Meteo weather codes mapping (simplified to emoji)
+  function weatherEmoji(code){
+    // See: https://open-meteo.com/en/docs (weathercode)
+    if (code === 0) return "☀️";
+    if (code === 1) return "🌤️";
+    if (code === 2) return "⛅";
+    if (code === 3) return "☁️";
+    if ([45,48].includes(code)) return "🌫️";
+    if ([51,53,55,56,57].includes(code)) return "🌦️";
+    if ([61,63,65,66,67].includes(code)) return "🌧️";
+    if ([71,73,75,77].includes(code)) return "🌨️";
+    if ([80,81,82].includes(code)) return "🌧️";
+    if ([85,86].includes(code)) return "🌨️";
+    if ([95,96,99].includes(code)) return "⛈️";
+    return "🌡️";
+  }
+
+  function weatherKeyForCache(){
+    const w = state.weather || {};
+    const lat = (w.lat ?? "").toString();
+    const lon = (w.lon ?? "").toString();
+    return `${lat},${lon}`;
+  }
+
+  function setLocationStatus(){
+    const w = state.weather || {};
+    if (w.lat == null || w.lon == null) {
+      locationStatus.textContent = "No location set.";
+      return;
+    }
+    const name = w.locationName ? ` (${w.locationName})` : "";
+    locationStatus.textContent = `Location: ${w.lat.toFixed(4)}, ${w.lon.toFixed(4)}${name}`;
+  }
+
+  async function fetchWeatherForWeek(){
+    const w = state.weather;
+    if (!w.enabled) return;
+    if (w.lat == null || w.lon == null) return;
+
+    const weekIso = toISO(weekStart);
+    const cacheKey = `${weekIso}|${weatherKeyForCache()}`;
+    if (w.cacheByWeek[cacheKey]) return; // already cached
+
+    const start = new Date(weekStart);
+    const end = addDays(start, 6);
+    const startStr = toISO(start);
+    const endStr = toISO(end);
+
+    const tz = w.tz || "auto";
+    const url =
+      `https://api.open-meteo.com/v1/forecast` +
+      `?latitude=${encodeURIComponent(w.lat)}` +
+      `&longitude=${encodeURIComponent(w.lon)}` +
+      `&daily=weathercode,temperature_2m_max,temperature_2m_min` +
+      `&temperature_unit=celsius` +
+      `&timezone=${encodeURIComponent(tz)}` +
+      `&start_date=${encodeURIComponent(startStr)}` +
+      `&end_date=${encodeURIComponent(endStr)}`;
+
+    try{
+      const res = await fetch(url);
+      if (!res.ok) throw new Error("Weather fetch failed");
+      const data = await res.json();
+
+      const out = {};
+      const times = data?.daily?.time || [];
+      const codes = data?.daily?.weathercode || [];
+      const tmax = data?.daily?.temperature_2m_max || [];
+      const tmin = data?.daily?.temperature_2m_min || [];
+
+      for (let i=0;i<times.length;i++){
+        out[times[i]] = {
+          code: codes[i],
+          tmax: tmax[i],
+          tmin: tmin[i]
+        };
+      }
+
+      w.cacheByWeek[cacheKey] = {
+        fetchedAt: Date.now(),
+        byDateISO: out
+      };
+      saveState();
+    } catch (e){
+      toast("Couldn’t load weather (check internet).", "warn");
+    }
+  }
+
+  function getWeatherForDate(dateObj){
+    const w = state.weather;
+    if (!w.enabled) return null;
+    if (w.lat == null || w.lon == null) return null;
+
+    const weekIso = toISO(weekStart);
+    const cacheKey = `${weekIso}|${weatherKeyForCache()}`;
+    const cached = w.cacheByWeek[cacheKey];
+    if (!cached) return null;
+
+    const iso = toISO(dateObj);
+    return cached.byDateISO?.[iso] || null;
+  }
+
+  async function setLocationByGeolocation(){
+    if (!navigator.geolocation) {
+      toast("Geolocation not supported in this browser.", "warn");
+      return;
+    }
+    toast("Requesting location permission…");
+    navigator.geolocation.getCurrentPosition(async (pos) => {
+      state.weather.lat = pos.coords.latitude;
+      state.weather.lon = pos.coords.longitude;
+      state.weather.locationName = "";
+      saveState();
+      setLocationStatus();
+      await fetchWeatherForWeek();
+      renderWeek();
+      toast("Location set");
+    }, (err) => {
+      toast("Location permission denied or unavailable.", "warn");
+    }, { enableHighAccuracy:false, timeout:10000, maximumAge: 600000 });
+  }
+
+  async function setLocationBySearch(query){
+    const q = (query || "").trim();
+    if (!q) return toast("Enter a place name first", "warn");
+
+    const url = `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(q)}&count=1&language=en&format=json`;
+    try{
+      const res = await fetch(url);
+      if (!res.ok) throw new Error("Geo search failed");
+      const data = await res.json();
+      const r = data?.results?.[0];
+      if (!r) return toast("No results found", "warn");
+
+      state.weather.lat = r.latitude;
+      state.weather.lon = r.longitude;
+      state.weather.locationName = [r.name, r.admin1, r.country].filter(Boolean).join(", ");
+      state.weather.tz = r.timezone || state.weather.tz;
+      saveState();
+      setLocationStatus();
+      await fetchWeatherForWeek();
+      renderWeek();
+      toast("Location set");
+    } catch {
+      toast("Couldn’t search location (check internet).", "warn");
+    }
+  }
+
   // ---------- Clear helpers ----------
   function clearDay(day){
     const plan = ensureWeekPlan();
@@ -761,6 +955,7 @@
   function render(){
     elWeekRange.textContent = fmtRange(weekStart);
     renderTargetsUI();
+    renderWeatherUI();
     renderWeek();
     renderDishList();
   }
@@ -773,6 +968,11 @@
     tFat.value = tar.fat ?? "";
   }
 
+  function renderWeatherUI(){
+    showWeather.checked = !!state.weather.enabled;
+    setLocationStatus();
+  }
+
   function renderWeek(){
     const plan = ensureWeekPlan();
     elWeek.innerHTML = "";
@@ -782,6 +982,16 @@
       const dayObj = plan[day];
       const tot = dayTotals(dayObj);
 
+      const w = getWeatherForDate(dateObj);
+      const weatherHTML = (state.weather.enabled && w)
+        ? `
+          <span class="weatherPill" title="Weather forecast">
+            <span class="weatherIcon">${weatherEmoji(w.code)}</span>
+            <span class="weatherTemp">${Math.round(w.tmax)}° / ${Math.round(w.tmin)}°C</span>
+          </span>
+        `
+        : "";
+
       const wrap = document.createElement("div");
       wrap.className = "dayCard";
       wrap.innerHTML = `
@@ -789,7 +999,7 @@
           <div class="dayTitle">
             <div>
               <strong>${day}</strong>
-              <div class="micro">${formatDate(dateObj)}</div>
+              <div class="micro">${formatDate(dateObj)} ${weatherHTML}</div>
             </div>
             <div class="dayActions">
               <button class="iconBtn danger" data-clear-day="1" title="Clear this day" aria-label="Clear this day">✕</button>
@@ -812,7 +1022,6 @@
               ? `${d.name} — ${d.cal} kcal, ${d.protein}P, ${d.carbs}C, ${d.fat}F${loc ? " — " + loc : ""}`
               : "Drop a dish here or tap Edit";
 
-            // per-serving macro display
             const mealCal = d ? (Number(d.cal)||0) : 0;
             const mealP = d ? (Number(d.protein)||0) : 0;
             const mealC = d ? (Number(d.carbs)||0) : 0;
@@ -848,7 +1057,7 @@
         clearDay(day);
       });
 
-      // Wire up drag/drop
+      // drag/drop
       wrap.querySelectorAll(".mealRow").forEach(row => {
         row.querySelector("button[data-edit]").addEventListener("click", () => {
           openPicker(row.dataset.day, row.dataset.meal);
@@ -1305,8 +1514,8 @@
   document.getElementById("copyPlan").addEventListener("click", copyPlan);
   document.getElementById("exportCSV").addEventListener("click", exportWeekCSV);
 
-  document.getElementById("prevWeek").addEventListener("click", ()=>{ weekStart = addDays(weekStart,-7); render(); });
-  document.getElementById("nextWeek").addEventListener("click", ()=>{ weekStart = addDays(weekStart, 7); render(); });
+  document.getElementById("prevWeek").addEventListener("click", async ()=>{ weekStart = addDays(weekStart,-7); await fetchWeatherForWeek(); render(); });
+  document.getElementById("nextWeek").addEventListener("click", async ()=>{ weekStart = addDays(weekStart, 7); await fetchWeatherForWeek(); render(); });
 
   pickSearch.addEventListener("input", renderPicker);
   document.getElementById("pickClear").addEventListener("click", ()=>{ pickSearch.value=""; renderPicker(); pickSearch.focus(); });
@@ -1317,7 +1526,11 @@
   document.getElementById("clearWeek").addEventListener("click", () => {
     const label = fmtRange(weekStart);
     if (!confirm(`Clear ALL days for this week (${label})? This cannot be undone.`)) return;
-    clearWeek();
+    const plan = ensureWeekPlan();
+    DAYS.forEach(d => plan[d] = emptyDay());
+    saveState();
+    renderWeek();
+    toast("Week cleared");
   });
 
   document.getElementById("reset").addEventListener("click", ()=>{
@@ -1330,13 +1543,50 @@
     render();
   });
 
+  // Weather wiring
+  showWeather.addEventListener("change", async () => {
+    state.weather.enabled = !!showWeather.checked;
+    saveState();
+    if (state.weather.enabled) {
+      await fetchWeatherForWeek();
+    }
+    renderWeek();
+  });
+
+  useMyLocation.addEventListener("click", async () => {
+    state.weather.enabled = true;
+    showWeather.checked = true;
+    saveState();
+    await setLocationByGeolocation();
+  });
+
+  findLocation.addEventListener("click", async () => {
+    state.weather.enabled = true;
+    showWeather.checked = true;
+    saveState();
+    await setLocationBySearch(locationQuery.value);
+  });
+
+  locationQuery.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      findLocation.click();
+    }
+  });
+
   // default categories for new dish entry
   catBreakfast.checked = true;
   catLunch.checked = true;
   catDinner.checked = true;
 
   // ---------- Initial render ----------
-  render();
+  (async () => {
+    render();
+    if (state.weather.enabled) {
+      await fetchWeatherForWeek();
+      renderWeek();
+    }
+  })();
 })();
 </script>
 </body>
