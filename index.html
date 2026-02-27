@@ -189,7 +189,7 @@
               <input id="dishFat" placeholder="Fat (g)" type="number" min="0" />
               <button class="primary" id="saveDish">Save</button>
             </div>
-            <div class="muted">Per-serving values. Import format now: <b>name, calories, protein, carbs, fat</b>.</div>
+            <div class="muted">Per-serving values. Import format: <b>name, calories, protein, carbs, fat</b>.</div>
           </div>
         </div>
 
@@ -269,7 +269,6 @@
       const parsed = JSON.parse(raw);
       if (!parsed.dishes || !parsed.planByWeekStart) return defaultState();
       if (!parsed.targets) parsed.targets = defaultState().targets;
-      // migrate fat if missing
       parsed.dishes = parsed.dishes.map(d => ({ fat: 0, ...d }));
       parsed.targets = { fat: 0, ...parsed.targets };
       return parsed;
@@ -280,7 +279,6 @@
   function saveState(){ localStorage.setItem(KEY, JSON.stringify(state)); }
   let state = loadState();
 
-  // ---- date helpers (Monday-start week) ----
   function startOfWeek(date) {
     const d = new Date(date);
     d.setHours(0,0,0,0);
@@ -311,7 +309,6 @@
       state.planByWeekStart[key] = Object.fromEntries(DAYS.map(d => [d, emptyDay()]));
       saveState();
     } else {
-      // migrate older structures safely
       DAYS.forEach(day => {
         if (!state.planByWeekStart[key][day]) state.planByWeekStart[key][day] = emptyDay();
         MEALS.forEach(meal => {
@@ -323,7 +320,6 @@
     return state.planByWeekStart[key];
   }
 
-  // ---- DOM refs ----
   const elWeek = document.getElementById("week");
   const elWeekRange = document.getElementById("weekRange");
   const elDishList = document.getElementById("dishList");
@@ -351,7 +347,6 @@
   let activeDay = null;
   let activeMeal = null;
 
-  // ---- utilities ----
   function toast(msg){
     let el = document.getElementById("__toast");
     if (!el) {
@@ -404,7 +399,6 @@
     return (tar.cal||0) > 0 || (tar.protein||0) > 0 || (tar.carbs||0) > 0 || (tar.fat||0) > 0;
   }
 
-  // status heuristic: kcal ±10% ok; macros ±15% ok
   function dayStatus(tot){
     const tar = state.targets || { cal:0, protein:0, carbs:0, fat:0 };
     if (!hasTargets()) return { label:"No targets set", cls:"ok", icon:"⚠️" };
@@ -433,25 +427,22 @@
     return { icon:"❌", cls:"bad", label:"Off target" };
   }
 
-  // progress percentage capped
   function pct(actual, target){
     if (!target || target <= 0) return 0;
     const p = (actual / target) * 100;
-    return Math.max(0, Math.min(140, p)); // allow >100% up to 140% for visibility
+    return Math.max(0, Math.min(140, p));
   }
 
-  // distance metric for greedy solver (normalized squared error)
   function scoreAgainstTargets(tot){
     const tar = state.targets || { cal:0, protein:0, carbs:0, fat:0 };
     if (!hasTargets()) return 0;
 
     function term(actual, target){
       if (!target || target <= 0) return 0;
-      const diff = (actual - target) / target; // normalized
+      const diff = (actual - target) / target;
       return diff * diff;
     }
 
-    // weight protein slightly higher (common macro focus)
     const wCal = 1.0, wProtein = 1.4, wCarbs = 1.1, wFat = 1.1;
     return (
       wCal * term(tot.cal, tar.cal) +
@@ -461,7 +452,6 @@
     );
   }
 
-  // ---- rendering ----
   function render(){
     elWeekRange.textContent = fmtRange(weekStart);
     renderTargetsUI();
@@ -480,10 +470,10 @@
   function macroProgressHTML(tot){
     const tar = state.targets || {};
     const rows = [
-      { k:"kcal", label:"kcal", a:tot.cal, t:tar.cal },
-      { k:"P", label:"Prot", a:tot.protein, t:tar.protein },
-      { k:"C", label:"Carb", a:tot.carbs, t:tar.carbs },
-      { k:"F", label:"Fat", a:tot.fat, t:tar.fat },
+      { label:"kcal", a:tot.cal, t:tar.cal },
+      { label:"Prot", a:tot.protein, t:tar.protein },
+      { label:"Carb", a:tot.carbs, t:tar.carbs },
+      { label:"Fat", a:tot.fat, t:tar.fat },
     ];
     return `
       <div class="progressWrap">
@@ -568,29 +558,38 @@
 
       // wire up buttons + drag/drop for meal slots
       wrap.querySelectorAll(".mealRow").forEach(row => {
-        // Edit button
         row.querySelector("button[data-edit]").addEventListener("click", () => {
           openPicker(row.dataset.day, row.dataset.meal);
         });
 
-        // Drag meal slot
+        // ---- FIXED DRAG PAYLOAD TYPE: text/plain ----
         row.addEventListener("dragstart", (ev) => {
           const payload = { type:"mealSlot", day: row.dataset.day, meal: row.dataset.meal };
-          ev.dataTransfer.setData("application/json", JSON.stringify(payload));
-          ev.dataTransfer.effectAllowed = "move";
+          ev.dataTransfer.setData("text/plain", JSON.stringify(payload));
+          ev.dataTransfer.effectAllowed = "copyMove";
         });
 
-        // Drop handling (both from dish list and from other meal slots)
         row.addEventListener("dragover", (ev) => {
-          ev.preventDefault();
+          ev.preventDefault(); // MUST be here or drop gets rejected
           row.classList.add("dragOver");
-          ev.dataTransfer.dropEffect = "move";
+
+          // decide copy vs move based on payload type (prevents 🚫 cursor)
+          const raw = ev.dataTransfer.getData("text/plain");
+          try {
+            const payload = JSON.parse(raw || "{}");
+            ev.dataTransfer.dropEffect = (payload.type === "dish") ? "copy" : "move";
+          } catch {
+            ev.dataTransfer.dropEffect = "move";
+          }
         });
         row.addEventListener("dragleave", () => row.classList.remove("dragOver"));
+
         row.addEventListener("drop", (ev) => {
           ev.preventDefault();
           row.classList.remove("dragOver");
-          const json = ev.dataTransfer.getData("application/json");
+
+          // ---- FIXED: read from text/plain ----
+          const json = ev.dataTransfer.getData("text/plain");
           if (!json) return;
 
           let payload;
@@ -601,7 +600,6 @@
           const plan = ensureWeekPlan();
 
           if (payload.type === "dish") {
-            // set dish into this meal slot
             plan[targetDay][targetMeal] = { dishId: payload.dishId, servings: 1 };
             saveState();
             renderWeek();
@@ -612,11 +610,12 @@
           if (payload.type === "mealSlot") {
             const fromDay = payload.day;
             const fromMeal = payload.meal;
-            // swap
+
             const a = plan[fromDay][fromMeal];
             const b = plan[targetDay][targetMeal];
             plan[fromDay][fromMeal] = b;
             plan[targetDay][targetMeal] = a;
+
             saveState();
             renderWeek();
             toast("Meals swapped");
@@ -648,11 +647,11 @@
         </div>
       `;
 
-      // drag dish
+      // ---- FIXED DRAG PAYLOAD TYPE: text/plain ----
       el.addEventListener("dragstart", (ev) => {
         const payload = { type:"dish", dishId: d.id };
-        ev.dataTransfer.setData("application/json", JSON.stringify(payload));
-        ev.dataTransfer.effectAllowed = "copy";
+        ev.dataTransfer.setData("text/plain", JSON.stringify(payload));
+        ev.dataTransfer.effectAllowed = "copyMove";
       });
 
       el.querySelector("[data-delete]").addEventListener("click", () => deleteDish(d.id));
@@ -663,7 +662,6 @@
     elCount.textContent = `${state.dishes.length} dish${state.dishes.length===1? "" : "es"}`;
   }
 
-  // ---- dish CRUD ----
   function saveDishFromForm(){
     const name = normalizeName(elDishName.value);
     if (!name) return toast("Name required");
@@ -727,7 +725,6 @@
     render();
   }
 
-  // ---- targets ----
   function saveTargets(){
     state.targets = {
       cal: Number(tCal.value) || 0,
@@ -740,7 +737,6 @@
     renderWeek();
   }
 
-  // ---- picker ----
   function openPicker(day, meal){
     activeDay = day;
     activeMeal = meal;
@@ -794,7 +790,6 @@
     renderWeek();
   }
 
-  // ---- random helper ----
   function shuffleArray(a){
     const arr=[...a];
     for(let i=arr.length-1;i>0;i--){
@@ -804,14 +799,10 @@
     return arr;
   }
 
-  // ---- SMART fill to targets (greedy) ----
-  // For each empty meal slot, choose the dish that best improves scoreAgainstTargets for that day.
-  // If no targets are set, it falls back to random fill.
   function smartPickDishForDay(dayObj, excludeIdsSet){
     const dishes = state.dishes;
     if (dishes.length === 0) return null;
 
-    // If no targets, just pick a random dish not excluded
     if (!hasTargets()) {
       const pool = dishes.map(d=>d.id).filter(id => !excludeIdsSet.has(id));
       const pickFrom = pool.length ? pool : dishes.map(d=>d.id);
@@ -819,15 +810,12 @@
     }
 
     const currentTot = dayTotals(dayObj);
-    const currentScore = scoreAgainstTargets(currentTot);
-
     let bestId = null;
     let bestScore = Infinity;
 
     for (const d of dishes) {
       if (excludeIdsSet.has(d.id)) continue;
 
-      // consider adding this dish once (servings fixed 1 for fill)
       const candidateTot = {
         cal: currentTot.cal + (Number(d.cal)||0),
         protein: currentTot.protein + (Number(d.protein)||0),
@@ -835,25 +823,13 @@
         fat: currentTot.fat + (Number(d.fat)||0),
       };
       const s = scoreAgainstTargets(candidateTot);
-
-      // Prefer anything that improves, otherwise still pick the "least bad"
-      if (s < bestScore) {
-        bestScore = s;
-        bestId = d.id;
-      }
+      if (s < bestScore) { bestScore = s; bestId = d.id; }
     }
 
-    // if everything excluded, allow repeats
     if (!bestId) {
-      // try again without exclusions
       const d = dishes[Math.floor(Math.random()*dishes.length)];
       return d?.id ?? null;
     }
-
-    // small nudge: if best doesn't improve and we had a score, still accept as least-bad
-    if (bestId && bestScore === Infinity) return null;
-    // (currentScore is unused, but kept to show intent; you can later force "must improve" if you want)
-
     return bestId;
   }
 
@@ -861,7 +837,6 @@
     const plan = ensureWeekPlan();
     if (state.dishes.length === 0) return toast("Add dishes first");
 
-    // Track used dishes across the entire week to reduce repeats (soft constraint)
     const usedWeek = new Set();
     DAYS.forEach(day => MEALS.forEach(meal => {
       const id = plan[day][meal]?.dishId;
@@ -875,18 +850,14 @@
         const isEmpty = !dayObj[meal]?.dishId;
         if (onlyEmpty && !isEmpty) continue;
 
-        // choose dish
         let pickId;
-        if (smart) {
-          // exclude already-used week dishes if possible
-          pickId = smartPickDishForDay(dayObj, usedWeek);
-        } else {
+        if (smart) pickId = smartPickDishForDay(dayObj, usedWeek);
+        else {
           const ids = shuffleArray(state.dishes.map(d=>d.id));
           pickId = ids.find(id => !usedWeek.has(id)) || ids[0];
         }
 
         if (!pickId) continue;
-
         dayObj[meal] = { dishId: pickId, servings: 1 };
         usedWeek.add(pickId);
       }
@@ -897,7 +868,6 @@
     renderWeek();
   }
 
-  // “Shuffle week” = randomize everything (not macro-smart)
   function shuffleWeek(){
     const plan = ensureWeekPlan();
     const ids = shuffleArray(state.dishes.map(d=>d.id));
@@ -915,7 +885,6 @@
     renderWeek();
   }
 
-  // ---- export / copy ----
   function copyPlan(){
     const plan = ensureWeekPlan();
     const tar = state.targets || { cal:0, protein:0, carbs:0, fat:0 };
@@ -979,7 +948,6 @@
     URL.revokeObjectURL(url);
   }
 
-  // ---- import ----
   function importBulkCSV(){
     const text = elBulk.value || "";
     const lines = text.split("\n").map(l=>l.trim()).filter(Boolean);
@@ -1008,12 +976,9 @@
     renderDishList();
   }
 
-  // ---- wiring ----
   document.getElementById("saveTargets").addEventListener("click", saveTargets);
-
   document.getElementById("saveDish").addEventListener("click", saveDishFromForm);
   elDishName.addEventListener("keydown", (e)=>{ if(e.key==="Enter"){ e.preventDefault(); saveDishFromForm(); } });
-
   document.getElementById("importBulk").addEventListener("click", importBulkCSV);
 
   elSearch.addEventListener("input", renderDishList);
@@ -1042,7 +1007,6 @@
     render();
   });
 
-  // ---- picker helpers ----
   function openPicker(day, meal){
     activeDay = day;
     activeMeal = meal;
@@ -1065,7 +1029,6 @@
     renderWeek();
   }
 
-  // ---- initial render ----
   render();
 })();
 </script>
