@@ -668,7 +668,7 @@
               <div class="progLabel">${r.label}</div>
               <div class="bar" title="${parts.label}">
                 <div class="fill" style="width:${greenW}%;"></div>
-                ${parts.red > 0 ? `<div class="overflow" style="left:${redLeft}%; width:${redW}%;"></div>` : ""}
+                ${parts.red > 0 ? `<div class="overflow" style="left:${redLeft}%; width:max(2px, ${redW}%);"></div>` : ""}
               </div>
               <div class="progVal">${parts.label}</div>
             </div>
