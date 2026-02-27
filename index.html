@@ -122,9 +122,25 @@
       border:1px solid var(--border);
       overflow:hidden;
       background: color-mix(in srgb, var(--card) 92%, #000 8%);
+      position:relative;
     }
-    .bar > div { height:100%; width:0%; background: linear-gradient(135deg,var(--good1),var(--good2)); }
-    .bar > div.over { background: linear-gradient(135deg,var(--bad1),var(--bad2)); }
+    .bar > .fill {
+      height:100%;
+      position:absolute;
+      left:0;
+      top:0;
+      border-radius:999px 0 0 999px;
+      background: linear-gradient(135deg,var(--good1),var(--good2));
+    }
+    .bar > .overflow {
+      height:100%;
+      position:absolute;
+      left:0;
+      top:0;
+      border-radius:0 999px 999px 0;
+      background: linear-gradient(135deg,var(--bad1),var(--bad2));
+      opacity:0.95;
+    }
     .progVal { font-size:12px; color:var(--muted); text-align:right; }
 
     .meals { display:grid; gap:8px; }
@@ -168,7 +184,7 @@
     .dish[draggable="true"] { cursor: grab; }
     .dish small { color:var(--muted); font-size:12px; margin-left:6px; }
 
-    dialog { border:none; border-radius:12px; padding:0; width:min(700px, 94vw); background:var(--card); color:var(--text); box-shadow: var(--shadow); }
+    dialog { border:none; border-radius:12px; padding:0; width:min(740px, 96vw); background:var(--card); color:var(--text); box-shadow: var(--shadow); }
     dialog::backdrop { background:rgba(0,0,0,.45); }
     .dlg { padding:14px; }
     .footer { display:flex; justify-content:space-between; gap:10px; margin-top:10px; flex-wrap:wrap; }
@@ -249,7 +265,7 @@
           Drag & drop:
           <br>• Drag a <b>dish</b> from the right onto a meal slot to set it.
           <br>• Drag a <b>meal slot</b> onto another meal slot to swap them.
-          <br>Macro bars turn <b>red</b> when you go over target.
+          <br>Macro bars show green up to target and a red overflow segment for >100%.
         </div>
       </section>
 
@@ -287,18 +303,22 @@
               <input id="dishProtein" placeholder="Protein (g)" type="number" min="0" />
               <input id="dishCarbs" placeholder="Carbs (g)" type="number" min="0" />
               <input id="dishFat" placeholder="Fat (g)" type="number" min="0" />
+            </div>
+            <div class="row" style="flex-wrap:wrap;">
+              <input id="dishBook" placeholder="Recipe book (optional)" style="flex:1;" />
+              <input id="dishPage" placeholder="Page" type="number" style="width:96px;" min="1" />
               <button class="primary" id="saveDish">Save</button>
             </div>
-            <div class="muted">Per-serving values. Import format: <b>name, calories, protein, carbs, fat</b>.</div>
+            <div class="muted">Per-serving values. Import format: <b>name, calories, protein, carbs, fat, book, page</b> (book/page optional).</div>
           </div>
         </div>
 
         <details style="margin-bottom:10px;">
           <summary class="muted" style="cursor:pointer;">Import CSV (one per line)</summary>
           <div style="margin-top:10px;">
-            <textarea id="bulk" placeholder="Example: Pasta bake,650,25,80,18" style="width:100%; min-height:86px;"></textarea>
+            <textarea id="bulk" placeholder="Example: Pasta bake,650,25,80,18,Everyday Meals,45" style="width:100%; min-height:86px;"></textarea>
             <div class="row" style="justify-content:space-between; margin-top:8px;">
-              <span class="muted">Format: name, calories, protein, carbs, fat</span>
+              <span class="muted">Format: name, calories, protein, carbs, fat, book (opt), page (opt)</span>
               <button id="importBulk" class="smallBtn">Import</button>
             </div>
           </div>
@@ -348,16 +368,16 @@
 (() => {
   const DAYS = ["Mon","Tue","Wed","Thu","Fri","Sat","Sun"];
   const MEALS = ["Breakfast","Lunch","Dinner"];
-  const KEY = "mealPlanner.macro.v4";
+  const KEY = "mealPlanner.macro.v5";
   const THEME_KEY = "mealPlanner.theme";
 
   function defaultState() {
     return {
       targets: { cal: 2200, protein: 160, carbs: 220, fat: 70 },
       dishes: [
-        { id: crypto.randomUUID(), name: "Pasta bake", cal: 650, protein: 25, carbs: 80, fat: 18 },
-        { id: crypto.randomUUID(), name: "Chicken & rice", cal: 520, protein: 40, carbs: 55, fat: 10 },
-        { id: crypto.randomUUID(), name: "Greek yoghurt + berries", cal: 280, protein: 20, carbs: 30, fat: 6 }
+        { id: crypto.randomUUID(), name: "Pasta bake", cal: 650, protein: 25, carbs: 80, fat: 18, book: "Family Dishes", page: 45 },
+        { id: crypto.randomUUID(), name: "Chicken & rice", cal: 520, protein: 40, carbs: 55, fat: 10, book: "", page: null },
+        { id: crypto.randomUUID(), name: "Greek yoghurt + berries", cal: 280, protein: 20, carbs: 30, fat: 6, book: "", page: null }
       ],
       planByWeekStart: {}
     };
@@ -370,7 +390,8 @@
       const parsed = JSON.parse(raw);
       if (!parsed.dishes || !parsed.planByWeekStart) return defaultState();
       if (!parsed.targets) parsed.targets = defaultState().targets;
-      parsed.dishes = parsed.dishes.map(d => ({ fat: 0, ...d }));
+      // migrate dishes to include book/page if missing
+      parsed.dishes = parsed.dishes.map(d => ({ book: "", page: null, ...d }));
       parsed.targets = { fat: 0, ...parsed.targets };
       return parsed;
     } catch {
@@ -411,7 +432,6 @@
     }
   }
 
-  // week start Monday
   function startOfWeek(date) {
     const d = new Date(date);
     d.setHours(0,0,0,0);
@@ -423,7 +443,6 @@
   function toISO(d){ const x = new Date(d); x.setHours(0,0,0,0); return x.toISOString().slice(0,10); }
   function fmtRange(ws){
     const a = new Date(ws), b = addDays(a,6);
-    // This already respects locale order/formatting
     const opts = { day:"2-digit", month:"short" };
     return `${a.toLocaleDateString(undefined,opts)} – ${b.toLocaleDateString(undefined,opts)} ${a.getFullYear()}`;
   }
@@ -462,6 +481,8 @@
   const elDishProtein = document.getElementById("dishProtein");
   const elDishCarbs = document.getElementById("dishCarbs");
   const elDishFat = document.getElementById("dishFat");
+  const elDishBook = document.getElementById("dishBook");
+  const elDishPage = document.getElementById("dishPage");
   const elBulk = document.getElementById("bulk");
 
   const tCal = document.getElementById("tCal");
@@ -502,7 +523,7 @@
     const s=(q||"").trim().toLowerCase();
     const arr=[...state.dishes].sort((a,b)=>a.name.localeCompare(b.name));
     if (!s) return arr;
-    return arr.filter(d => d.name.toLowerCase().includes(s));
+    return arr.filter(d => d.name.toLowerCase().includes(s) || (d.book||"").toLowerCase().includes(s));
   }
 
   function clearDishForm(){
@@ -511,6 +532,8 @@
     elDishProtein.value = "";
     elDishCarbs.value = "";
     elDishFat.value = "";
+    elDishBook.value = "";
+    elDishPage.value = "";
     elDishName.dataset.editing = "";
   }
 
@@ -566,7 +589,6 @@
   function pct(actual, target){
     if (!target || target <= 0) return 0;
     const p = (actual / target) * 100;
-    // allow over-target visibility, but cap
     return Math.max(0, Math.min(140, p));
   }
 
@@ -605,6 +627,7 @@
     tFat.value = tar.fat ?? "";
   }
 
+  // Dual-segment bar: green fill up to 100% and red overflow proportionally (capped visually)
   function macroProgressHTML(tot){
     const tar = state.targets || {};
     const rows = [
@@ -617,13 +640,18 @@
     return `
       <div class="progressWrap">
         ${rows.map(r => {
-          const p = pct(r.a, r.t);
-          const over = (r.t && r.a > r.t);
+          const fullPct = pct(r.a, r.t);          // e.g. 120
+          const mainPct = Math.min(100, fullPct); // green portion
+          const overPct = Math.max(0, fullPct - 100); // overflow
+          // Visual cap for overflow: map overPct (0..40) to 0..40% of bar width (already capped by pct())
           const shown = r.t ? `${Math.round(r.a)}/${Math.round(r.t)}` : `${Math.round(r.a)}/–`;
           return `
             <div class="progRow">
               <div class="progLabel">${r.label}</div>
-              <div class="bar"><div class="${over ? "over" : ""}" style="width:${p}%"></div></div>
+              <div class="bar">
+                <div class="fill" style="width:${mainPct}%;"></div>
+                ${overPct > 0 ? `<div class="overflow" style="left:${mainPct}%; width:${Math.min(40, overPct)}%;"></div>` : ""}
+              </div>
               <div class="progVal">${shown}</div>
             </div>
           `;
@@ -669,6 +697,8 @@
             const mealC   = d ? (Number(d.carbs)||0) * (Number(servings)||0) : 0;
             const mealF   = d ? (Number(d.fat)||0) * (Number(servings)||0) : 0;
 
+            const bookInfo = d && (d.book || d.page) ? ` — ${d.book || ""}${d.page ? " p."+d.page : ""}` : "";
+
             return `
               <div class="mealRow"
                    draggable="true"
@@ -677,8 +707,8 @@
                 <div class="muted"><strong>${meal}</strong></div>
 
                 <div class="pill ${d ? "" : "empty"}"
-                     title="${d ? d.name : "Drop a dish here or tap Edit"}">
-                  ${d ? d.name : "Drop a dish here or tap Edit"}
+                     title="${d ? `${d.name} — ${d.cal} kcal, ${d.protein}P, ${d.carbs}C, ${d.fat}F${bookInfo}` : "Drop a dish here or tap Edit"}">
+                  ${d ? d.name + (bookInfo ? bookInfo : "") : "Drop a dish here or tap Edit"}
                 </div>
 
                 <div class="micro mealServ">
@@ -774,9 +804,12 @@
       el.setAttribute("draggable","true");
       el.dataset.dishId = d.id;
 
+      const bookMeta = (d.book || d.page) ? `<div class="micro">${d.book ? d.book : ""}${d.page ? (d.book? " • ":"") + "p."+d.page : ""}</div>` : "";
+
       el.innerHTML = `
         <div>
           <div><strong>${d.name}</strong> <small class="micro">(${d.cal} kcal, ${d.protein}P, ${d.carbs}C, ${d.fat}F)</small></div>
+          ${bookMeta}
           <div class="micro">Drag onto a meal slot</div>
         </div>
         <div style="display:flex;gap:8px;">
@@ -808,12 +841,14 @@
     const protein = Number(elDishProtein.value) || 0;
     const carbs = Number(elDishCarbs.value) || 0;
     const fat = Number(elDishFat.value) || 0;
+    const book = (elDishBook.value || "").trim();
+    const pageVal = elDishPage.value ? Number(elDishPage.value) : null;
 
     const editing = elDishName.dataset.editing;
     if (editing) {
       const idx = state.dishes.findIndex(d => d.id === editing);
       if (idx !== -1) {
-        state.dishes[idx] = { ...state.dishes[idx], name, cal, protein, carbs, fat };
+        state.dishes[idx] = { ...state.dishes[idx], name, cal, protein, carbs, fat, book, page: pageVal };
         saveState();
         toast("Updated");
         clearDishForm();
@@ -826,7 +861,7 @@
       return toast("Already exists");
     }
 
-    state.dishes.push({ id: crypto.randomUUID(), name, cal, protein, carbs, fat });
+    state.dishes.push({ id: crypto.randomUUID(), name, cal, protein, carbs, fat, book, page: pageVal });
     saveState();
     toast("Saved");
     clearDishForm();
@@ -841,6 +876,8 @@
     elDishProtein.value = d.protein;
     elDishCarbs.value = d.carbs;
     elDishFat.value = d.fat ?? 0;
+    elDishBook.value = d.book ?? "";
+    elDishPage.value = d.page ?? "";
     elDishName.dataset.editing = d.id;
     elDishName.focus();
   }
@@ -903,8 +940,9 @@
     list.forEach(d => {
       const row = document.createElement("div");
       row.className = "dish";
+      const bookMeta = (d.book || d.page) ? `<div class="micro">${d.book ? d.book : ""}${d.page ? (d.book? " • ":"") + "p."+d.page : ""}</div>` : "";
       row.innerHTML = `
-        <div><strong>${d.name}</strong> <small class="micro">(${d.cal} kcal, ${d.protein}P, ${d.carbs}C, ${d.fat}F)</small></div>
+        <div><strong>${d.name}</strong> <small class="micro">(${d.cal} kcal, ${d.protein}P, ${d.carbs}C, ${d.fat}F)</small>${bookMeta}</div>
         <div><button class="smallBtn">Choose</button></div>
       `;
       row.querySelector("button").addEventListener("click", () => {
@@ -930,7 +968,7 @@
     renderWeek();
   }
 
-  // ---------- Helpers ----------
+  // ---------- Helpers & Smart fill ----------
   function shuffleArray(a){
     const arr=[...a];
     for(let i=arr.length-1;i>0;i--){
@@ -1021,6 +1059,7 @@
     renderWeek();
   }
 
+  // ---------- Copy & Export (includes book & page) ----------
   function copyPlan(){
     const plan = ensureWeekPlan();
     const tar = state.targets || { cal:0, protein:0, carbs:0, fat:0 };
@@ -1043,7 +1082,8 @@
         const p = d ? Math.round((Number(d.protein)||0) * s) : 0;
         const c = d ? Math.round((Number(d.carbs)||0) * s) : 0;
         const f = d ? Math.round((Number(d.fat)||0) * s) : 0;
-        return `  - ${meal}: ${name} — ${s} serving(s) — ${cal} kcal, ${p}P ${c}C ${f}F`;
+        const book = d ? (d.book ? ` — ${d.book}${d.page? " p."+d.page:""}` : "") : "";
+        return `  - ${meal}: ${name}${book} — ${s} serving(s) — ${cal} kcal, ${p}P ${c}C ${f}F`;
       }).join("\n");
 
       return `${day} (${formatDate(dateObj)}) — Total: ${Math.round(tot.cal)} kcal, ${Math.round(tot.protein)}P ${Math.round(tot.carbs)}C ${Math.round(tot.fat)}F — ${st.icon} ${st.label}\n${mealLines}`;
@@ -1054,7 +1094,7 @@
 
   function exportWeekCSV(){
     const plan = ensureWeekPlan();
-    const rows = [["day","date","meal","dish","servings","calories","protein_g","carbs_g","fat_g"]];
+    const rows = [["day","date","meal","dish","recipe_book","page","servings","calories","protein_g","carbs_g","fat_g"]];
     DAYS.forEach((day, idx) => {
       const dateObj = addDays(weekStart, idx);
       const dateStr = formatDate(dateObj);
@@ -1063,16 +1103,18 @@
         const e = plan[day][meal];
         const d = e?.dishId ? getDish(e.dishId) : null;
         const name = d ? d.name : "";
+        const book = d ? (d.book || "") : "";
+        const page = d ? (d.page != null ? d.page : "") : "";
         const s = Number(e?.servings ?? 1) || 0;
         const cal = d ? (Number(d.cal)||0) * s : 0;
         const p = d ? (Number(d.protein)||0) * s : 0;
         const c = d ? (Number(d.carbs)||0) * s : 0;
         const f = d ? (Number(d.fat)||0) * s : 0;
-        rows.push([day, dateStr, meal, name, s, Math.round(cal), Math.round(p), Math.round(c), Math.round(f)]);
+        rows.push([day, dateStr, meal, name, book, page, s, Math.round(cal), Math.round(p), Math.round(c), Math.round(f)]);
       });
 
       const tot = dayTotals(plan[day]);
-      rows.push([day, dateStr, "TOTAL", "", "", Math.round(tot.cal), Math.round(tot.protein), Math.round(tot.carbs), Math.round(tot.fat)]);
+      rows.push([day, dateStr, "TOTAL", "", "", "", "", Math.round(tot.cal), Math.round(tot.protein), Math.round(tot.carbs), Math.round(tot.fat)]);
     });
 
     const csv = rows.map(r => r.map(cell => `"${String(cell).replace(/"/g,'""')}"`).join(",")).join("\n");
@@ -1087,6 +1129,7 @@
     URL.revokeObjectURL(url);
   }
 
+  // ---------- Import (supports optional book & page) ----------
   function importBulkCSV(){
     const text = elBulk.value || "";
     const lines = text.split("\n").map(l=>l.trim()).filter(Boolean);
@@ -1095,7 +1138,8 @@
     let added=0, skipped=0;
     for (const line of lines) {
       const parts = line.split(",").map(p=>p.trim());
-      if (parts.length < 4) { skipped++; continue; }
+      // Accept 5 required fields (name,cal,protein,carbs,fat) and optional book,page
+      if (parts.length < 5) { skipped++; continue; }
       const name = normalizeName(parts[0]);
       if (!name) { skipped++; continue; }
 
@@ -1103,9 +1147,11 @@
       const protein = Number(parts[2]) || 0;
       const carbs = Number(parts[3]) || 0;
       const fat = Number(parts[4]) || 0;
+      const book = parts[5] || "";
+      const page = parts[6] ? Number(parts[6]) : null;
 
       if (state.dishes.some(d=>d.name.toLowerCase()===name.toLowerCase())) { skipped++; continue; }
-      state.dishes.push({ id: crypto.randomUUID(), name, cal, protein, carbs, fat });
+      state.dishes.push({ id: crypto.randomUUID(), name, cal, protein, carbs, fat, book, page });
       added++;
     }
 
