@@ -2129,264 +2129,181 @@
     URL.revokeObjectURL(url);
   }
 
-  // ---------- NEW: Export PDF (print A4) ----------
-  function exportWeekPDF(){
-    const plan = ensureWeekPlan();
-    const tar = state.targets || { cal:0, protein:0, carbs:0, fat:0 };
-    const tol = getTol();
-    const range = fmtRange(weekStart);
+function exportWeekPDF(){
+  const plan = ensureWeekPlan();
+  const tar = state.targets || { cal:0, protein:0, carbs:0, fat:0 };
+  const tol = getTol();
+  const range = fmtRange(weekStart);
 
-    const safe = (s) => String(s ?? "").replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
-    const locationName = (state.weather?.locationName || "").trim();
-    const showWx = !!state.weather?.enabled;
+  const safe = (s) => String(s ?? "").replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+  const locationName = (state.weather?.locationName || "").trim();
+  const showWx = !!state.weather?.enabled;
 
-    const daysHTML = DAYS.map((day, idx) => {
-      const dateObj = addDays(weekStart, idx);
-      const dayObj = plan[day];
-      const tot = dayTotals(dayObj);
+  const daysHTML = DAYS.map((day, idx) => {
+    const dateObj = addDays(weekStart, idx);
+    const dayObj = plan[day];
+    const tot = dayTotals(dayObj);
 
-      const w = getWeatherForDate(dateObj);
-      const wxText = (showWx && w)
-        ? `${weatherEmoji(w.code)} ${Math.round(w.tmax)}°/${Math.round(w.tmin)}°C`
-        : "";
+    const w = getWeatherForDate(dateObj);
+    const wxText = (showWx && w)
+      ? `${weatherEmoji(w.code)} ${Math.round(w.tmax)}°/${Math.round(w.tmin)}°C`
+      : "";
 
-      const mealRows = MEALS.map(meal => {
-        const e = dayObj[meal];
-        const d = e?.dishId ? getDish(e.dishId) : null;
-        const name = d ? d.name : "";
-        const loc = d ? dishLocation(d) : "";
-        const kcal = d ? (Number(d.cal)||0) : 0;
-        const p = d ? (Number(d.protein)||0) : 0;
-        const c = d ? (Number(d.carbs)||0) : 0;
-        const f = d ? (Number(d.fat)||0) : 0;
-
-        return `
-          <tr>
-            <td class="colMeal">${safe(meal)}</td>
-            <td class="colDish">
-              <div class="dishName">${safe(name || "—")}</div>
-              ${loc ? `<div class="dishLoc">${safe(loc)}</div>` : ``}
-            </td>
-            <td class="colNums">${Math.round(kcal)}</td>
-            <td class="colNums">${Math.round(p)}</td>
-            <td class="colNums">${Math.round(c)}</td>
-            <td class="colNums">${Math.round(f)}</td>
-          </tr>
-        `;
-      }).join("");
+    const mealRows = MEALS.map(meal => {
+      const e = dayObj[meal];
+      const d = e?.dishId ? getDish(e.dishId) : null;
+      const name = d ? d.name : "";
+      const loc = d ? dishLocation(d) : "";
+      const kcal = d ? (Number(d.cal)||0) : 0;
+      const p = d ? (Number(d.protein)||0) : 0;
+      const c = d ? (Number(d.carbs)||0) : 0;
+      const f = d ? (Number(d.fat)||0) : 0;
 
       return `
-        <section class="dayBlock">
-          <div class="dayHeader">
-            <div>
-              <div class="dayTitle">${safe(day)} <span class="date">${safe(formatDate(dateObj))}</span></div>
-              ${wxText ? `<div class="wx">${safe(wxText)}${locationName ? ` • ${safe(locationName)}` : ""}</div>` : ``}
-            </div>
-            <div class="totals">
-              <div><span class="lbl">Total:</span> <b>${Math.round(tot.cal)}</b> kcal</div>
-              <div class="sub">${Math.round(tot.protein)}P • ${Math.round(tot.carbs)}C • ${Math.round(tot.fat)}F</div>
-            </div>
-          </div>
-
-          <table class="mealTable">
-            <thead>
-              <tr>
-                <th class="colMeal">Meal</th>
-                <th>Dish</th>
-                <th class="colNums">kcal</th>
-                <th class="colNums">P</th>
-                <th class="colNums">C</th>
-                <th class="colNums">F</th>
-              </tr>
-            </thead>
-            <tbody>
-              ${mealRows}
-            </tbody>
-          </table>
-        </section>
+        <tr>
+          <td>${safe(meal)}</td>
+          <td>
+            <div class="dishName">${safe(name || "—")}</div>
+            ${loc ? `<div class="dishLoc">${safe(loc)}</div>` : ``}
+          </td>
+          <td>${Math.round(kcal)}</td>
+          <td>${Math.round(p)}</td>
+          <td>${Math.round(c)}</td>
+          <td>${Math.round(f)}</td>
+        </tr>
       `;
     }).join("");
 
-    const html = `
+    return `
+      <section class="dayBlock">
+        <div class="dayHeader">
+          <div>
+            <div class="dayTitle">${safe(day)} <span class="date">${safe(formatDate(dateObj))}</span></div>
+            ${wxText ? `<div class="wx">${safe(wxText)}${locationName ? ` • ${safe(locationName)}` : ""}</div>` : ``}
+          </div>
+          <div class="totals">
+            <div><b>${Math.round(tot.cal)}</b> kcal</div>
+            <div>${Math.round(tot.protein)}P • ${Math.round(tot.carbs)}C • ${Math.round(tot.fat)}F</div>
+          </div>
+        </div>
+
+        <table>
+          <tbody>
+            ${mealRows}
+          </tbody>
+        </table>
+      </section>
+    `;
+  }).join("");
+
+  const html = `
 <!doctype html>
 <html>
 <head>
-  <meta charset="utf-8"/>
-  <title>Meal Plan — ${safe(range)}</title>
-  <style>
-    @page { size: A4; margin: 12mm; }
-    * { box-sizing: border-box; }
-    body {
-      font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial;
-      color: #111827;
-      margin: 0;
-    }
-    .pageHeader{
-      display:flex;
-      justify-content:space-between;
-      align-items:flex-start;
-      gap:12px;
-      padding-bottom:10px;
-      border-bottom: 2px solid #e5e7eb;
-      margin-bottom: 12px;
-    }
-    .title{
-      font-size: 18px;
-      font-weight: 900;
-      margin:0;
-    }
-    .range{
-      margin-top:4px;
-      color:#374151;
-      font-size: 12px;
-    }
-    .meta{
-      text-align:right;
-      font-size: 12px;
-      color:#374151;
-      line-height:1.35;
-      white-space:nowrap;
-    }
-    .pillRow{
-      margin-top:6px;
-      display:flex;
-      flex-wrap:wrap;
-      gap:6px;
-      justify-content:flex-end;
-    }
-    .pill{
-      border:1px solid #e5e7eb;
-      border-radius:999px;
-      padding:3px 8px;
-      font-size:11px;
-      color:#374151;
-      background:#f9fafb;
-    }
+<meta charset="utf-8"/>
+<title>Meal Plan</title>
 
-    .grid{
-      display:grid;
-      grid-template-columns: 1fr;
-      gap: 10px;
-    }
-    .dayBlock{
-      border:1px solid #e5e7eb;
-      border-radius: 10px;
-      padding: 10px;
-      page-break-inside: avoid;
-    }
-    .dayHeader{
-      display:flex;
-      justify-content:space-between;
-      gap:12px;
-      align-items:flex-start;
-      margin-bottom:8px;
-    }
-    .dayTitle{
-      font-weight:900;
-      font-size:14px;
-    }
-    .date{
-      font-weight:600;
-      color:#6b7280;
-      margin-left:8px;
-      font-size:12px;
-    }
-    .wx{
-      margin-top:2px;
-      font-size:11px;
-      color:#6b7280;
-    }
-    .totals{
-      text-align:right;
-      font-size:12px;
-    }
-    .totals .lbl{ color:#6b7280; font-weight:600; }
-    .totals .sub{ color:#6b7280; font-size:11px; margin-top:2px; }
+<style>
+@page { size: A4 landscape; margin: 10mm; }
 
-    table{
-      width:100%;
-      border-collapse: collapse;
-      font-size: 12px;
-    }
-    th, td{
-      border-top: 1px solid #e5e7eb;
-      padding: 6px 6px;
-      vertical-align: top;
-    }
-    thead th{
-      border-top:none;
-      text-align:left;
-      color:#374151;
-      font-size:11px;
-      letter-spacing:.02em;
-      text-transform: uppercase;
-    }
-    .colMeal{ width: 20%; color:#374151; font-weight:700; }
-    .colNums{ width: 8%; text-align:right; white-space:nowrap; }
-    .dishName{ font-weight:800; }
-    .dishLoc{ font-style:italic; color:#6b7280; font-size:11px; margin-top:2px; }
+body {
+  margin:0;
+  font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial;
+}
 
-    .footer{
-      margin-top: 10px;
-      font-size: 10px;
-      color:#6b7280;
-      display:flex;
-      justify-content:space-between;
-      gap:12px;
-      border-top:1px solid #e5e7eb;
-      padding-top:8px;
-    }
+.wrapper {
+  transform-origin: top left;
+}
 
-    /* Print niceties */
-    @media print{
-      a { color: inherit; text-decoration: none; }
-    }
-  </style>
+.header {
+  display:flex;
+  justify-content:space-between;
+  margin-bottom:8px;
+  border-bottom:2px solid #000;
+  padding-bottom:6px;
+}
+
+.title { font-size:16px; font-weight:900; }
+.meta { font-size:11px; }
+
+.grid {
+  display:grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap:8px;
+}
+
+.dayBlock {
+  border:1px solid #000;
+  padding:6px;
+  page-break-inside: avoid;
+}
+
+.dayHeader {
+  display:flex;
+  justify-content:space-between;
+  font-size:11px;
+  margin-bottom:4px;
+}
+
+.dayTitle { font-weight:700; }
+.date { font-weight:400; }
+
+table {
+  width:100%;
+  border-collapse:collapse;
+  font-size:10px;
+}
+
+td {
+  padding:2px 3px;
+  border-top:1px solid #ccc;
+}
+
+.dishName { font-weight:600; }
+.dishLoc { font-style:italic; font-size:9px; }
+
+</style>
 </head>
 <body>
-  <div class="pageHeader">
+
+<div class="wrapper" id="content">
+  <div class="header">
     <div>
       <div class="title">Meal Plan</div>
-      <div class="range">${safe(range)}</div>
+      <div class="meta">${safe(range)}</div>
     </div>
     <div class="meta">
-      <div><b>Targets</b>: ${Math.round(tar.cal||0)} kcal • ${Math.round(tar.protein||0)}P • ${Math.round(tar.carbs||0)}C • ${Math.round(tar.fat||0)}F</div>
-      <div>Tolerance (kcal): -${tol.calUnderPct}% / +${tol.calOverPct}%</div>
-      <div>Tolerance (carbs): -${tol.carbsUnderPct}% / +${tol.carbsOverPct}%</div>
-      <div class="pillRow">
-        <span class="pill">Breakfast • Lunch • Dinner</span>
-        <span class="pill">Print A4</span>
-      </div>
+      ${Math.round(tar.cal||0)} kcal • ${Math.round(tar.protein||0)}P • ${Math.round(tar.carbs||0)}C • ${Math.round(tar.fat||0)}F
     </div>
   </div>
 
   <div class="grid">
     ${daysHTML}
   </div>
+</div>
 
-  <div class="footer">
-    <div>Generated: ${safe(new Date().toLocaleString())}</div>
-    <div>Tip: In print dialog choose “Save as PDF”.</div>
-  </div>
+<script>
+window.onload = function(){
+  const el = document.getElementById("content");
+  const pageHeight = 794; // A4 landscape approx height in px
+  const scale = Math.min(1, pageHeight / el.scrollHeight);
+  el.style.transform = "scale(" + scale + ")";
+  setTimeout(() => window.print(), 200);
+};
+<\/script>
 
-  <script>
-    window.onload = () => {
-      // Give layout a tick, then open print dialog
-      setTimeout(() => window.print(), 200);
-    };
-  <\/script>
 </body>
 </html>`;
 
-    const w = window.open("", "_blank");
-    if (!w) {
-      toast("Popup blocked — allow popups for this site.", "warn");
-      return;
-    }
-    w.document.open();
-    w.document.write(html);
-    w.document.close();
+  const w = window.open("", "_blank");
+  if (!w) {
+    alert("Popup blocked — allow popups for this site.");
+    return;
   }
+  w.document.open();
+  w.document.write(html);
+  w.document.close();
+}
 
   // ---------- Ingredients toggle helpers ----------
   function setIngPanelOpen(panelEl, open){
