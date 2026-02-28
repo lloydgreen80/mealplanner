@@ -102,7 +102,6 @@
     }
     input::placeholder, textarea::placeholder{ color: color-mix(in srgb, var(--muted) 80%, transparent 20%); }
     input[type=number]{ max-width:140px; }
-
     button{ cursor:pointer; }
     button.primary{
       background: linear-gradient(135deg,var(--good1),var(--good2));
@@ -160,70 +159,81 @@
       outline-offset:2px;
     }
 
+    /* Day header layout: totals inline on top row (right of kebab) */
     .dayHeader{
       display:flex;
-      justify-content:space-between;
-      gap:10px;
-      align-items:flex-start;
-      flex-wrap:wrap;
+      flex-direction:column;
+      gap:8px;
     }
-
-    .dayTitle{
+    .dayTopRow{
       display:flex;
-      gap:12px;
-      align-items:flex-start;
       justify-content:space-between;
-      width:100%;
+      align-items:flex-start;
+      gap:12px;
     }
-    .dayTitle > .left{
+    .dayLeft{
       display:flex;
       flex-direction:column;
       gap:4px;
+      min-width:0;
     }
-    .dayTitle strong{ font-size:14px; }
-    .dayTitle .micro{ margin-top:2px; display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+    .dayLeft strong{ font-size:14px; }
+    .dayLeft .micro{ display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
 
-    .totalsBox{ text-align:right; min-width:240px; }
-    .totalsBox .kcal{ font-size:15px; font-weight:800; }
-
-    /* Compact macro bars: 1x4 */
-.progressWrap{
-  margin-top:8px;
-  display:grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap:8px;
-}
-
-.progItem{
-  display:grid;
-  grid-template-columns: 1fr;
-  gap:6px;
-  align-items:center;
-  min-width:0;
-}
-
-.progLabel{
-  font-size:11px;
-  color:var(--muted);
-  line-height:1;
-  text-align:center;
-}
-
-.bar{
-  width:100%;
-  height:10px;
-  border-radius:999px;
-  overflow:hidden;
-  border:1px solid color-mix(in srgb, var(--muted) 28%, var(--border) 72%);
-  background: color-mix(in srgb, var(--muted) 14%, var(--card) 86%);
-}
-
-.fill{
-  height:100%;
-  display:block;
-}
+    .dayRight{
+      display:flex;
+      align-items:flex-start;
+      gap:10px;
+      flex-shrink:0;
     }
-    .fill{ height:100%; width:0%; border-radius:999px; }
+    .dayTotalsInline{
+      text-align:right;
+      display:flex;
+      flex-direction:column;
+      gap:2px;
+      min-width:140px;
+    }
+    .dayTotalsInline .kcal{
+      font-size:14px;
+      font-weight:800;
+      color: var(--text);
+      line-height:1.1;
+    }
+
+    /* Macro bars: 1x4 */
+    .progressWrap{
+      margin-top:4px;
+      display:grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap:8px;
+    }
+    .progItem{
+      display:grid;
+      grid-template-columns: 1fr;
+      gap:6px;
+      align-items:center;
+      min-width:0;
+    }
+    .progLabel{
+      font-size:11px;
+      color:var(--muted);
+      line-height:1;
+      text-align:center;
+    }
+    .bar{
+      width:100%;
+      height:10px;
+      border-radius:999px;
+      overflow:hidden;
+      border:1px solid color-mix(in srgb, var(--muted) 28%, var(--border) 72%);
+      background: color-mix(in srgb, var(--muted) 14%, var(--card) 86%);
+    }
+    .fill{
+      height:100%;
+      display:block;
+      width:0%;
+      border-radius:999px;
+    }
     .fill.green{ background: linear-gradient(135deg,var(--good1),var(--good2)); }
     .fill.amber{ background: linear-gradient(135deg,var(--warn1),var(--warn2)); }
     .fill.red{ background: linear-gradient(135deg,var(--bad1),var(--bad2)); }
@@ -254,7 +264,7 @@
       .mealRow .mealBtn{ grid-column: 3 / 4; justify-self:end; }
     }
 
-    .dishBlock{ display:flex; flex-direction:column; gap:2px; }
+    .dishBlock{ display:flex; flex-direction:column; gap:2px; min-width:0; }
     .dishName{ font-size:14px; font-weight:800; line-height:1.2; }
     .dishLoc{ font-size:12px; font-style:italic; color:var(--muted); line-height:1.2; }
     .dishEmpty{ color: color-mix(in srgb, var(--muted) 85%, transparent 15%); font-weight:600; }
@@ -300,6 +310,8 @@
       justify-content:flex-end;
       padding-top:2px;
     }
+
+    /* Icon buttons (used across page) */
     .miniIcon{
       width:30px; height:30px;
       display:inline-flex; align-items:center; justify-content:center;
@@ -397,7 +409,7 @@
       flex-direction:column;
       align-items:flex-end;
       gap:6px;
-      margin-top:2px;
+      margin-top:0;
     }
     .kebabBtn{
       width:32px;
@@ -692,7 +704,7 @@
 (() => {
   const DAYS = ["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday","Sunday"];
   const MEALS = ["Breakfast","Lunch","Dinner"];
-  const KEY = "mealPlanner.macro.v13";
+  const KEY = "mealPlanner.macro.v14";
   const THEME_KEY = "mealPlanner.theme";
 
   function defaultState() {
@@ -706,7 +718,7 @@
       planByWeekStart: {},
       ui: {
         selectedDishId: null,
-        dayClipboard: null // { meals: {Breakfast:{dishId},...}, locked:boolean }
+        dayClipboard: null
       },
       weather: {
         enabled: false,
@@ -721,7 +733,7 @@
   }
 
   function loadState() {
-    const tryKeys = [KEY, "mealPlanner.macro.v12", "mealPlanner.macro.v11", "mealPlanner.macro.v10", "mealPlanner.macro.v9"];
+    const tryKeys = [KEY, "mealPlanner.macro.v13", "mealPlanner.macro.v12", "mealPlanner.macro.v11", "mealPlanner.macro.v10", "mealPlanner.macro.v9"];
     for (const k of tryKeys) {
       const raw = localStorage.getItem(k);
       if (!raw) continue;
@@ -743,6 +755,7 @@
           categories: { Breakfast:true, Lunch:true, Dinner:true, ...(d.categories || {}) }
         }));
 
+        // normalize plan structure
         for (const wk of Object.keys(parsed.planByWeekStart)) {
           for (const day of DAYS) {
             if (!parsed.planByWeekStart[wk][day]) parsed.planByWeekStart[wk][day] = {};
@@ -757,13 +770,15 @@
         return parsed;
       } catch {}
     }
-    return defaultState();
+    const fresh = defaultState();
+    localStorage.setItem(KEY, JSON.stringify(fresh));
+    return fresh;
   }
 
   let state = loadState();
   function saveState(){ localStorage.setItem(KEY, JSON.stringify(state)); }
 
-  // Close any open day menus (global, only once)
+  // Close any open day menus (single global listener)
   document.addEventListener("click", () => {
     document.querySelectorAll(".menuPanel.open").forEach(m => m.classList.remove("open"));
   });
@@ -800,7 +815,7 @@
   function startOfWeek(date) {
     const d = new Date(date);
     d.setHours(0,0,0,0);
-    const day = (d.getDay() + 6) % 7;
+    const day = (d.getDay() + 6) % 7; // Monday=0
     d.setDate(d.getDate() - day);
     return d;
   }
@@ -815,7 +830,7 @@
   let weekStart = startOfWeek(new Date());
 
   function emptyMeal(){ return { dishId: null, servings: 1 }; }
-  function emptyDay(){ const obj = { _locked:false }; MEALS.forEach(m => obj[m] = emptyMeal()); return obj; }
+  function emptyDay(){ const obj = { _locked:false }; ["Breakfast","Lunch","Dinner"].forEach(m => obj[m] = emptyMeal()); return obj; }
 
   function ensureWeekPlan(ws=weekStart){
     const key = toISO(ws);
@@ -983,12 +998,11 @@
         ${rows.map(r => {
           const cls = macroClass(r.a, r.t);
           const pct = macroFillPct(r.a, r.t);
+          const tip = `${r.label}: ${Math.round(r.a)}/${r.t ? Math.round(r.t) : "–"}`;
           return `
-            <div class="progItem" title="${r.label}: ${Math.round(r.a)}/${r.t ? Math.round(r.t) : "–"}">
+            <div class="progItem" title="${tip}">
               <div class="progLabel">${r.label}</div>
-              <div class="bar">
-                <div class="fill ${cls}" style="width:${pct.toFixed(1)}%;"></div>
-              </div>
+              <div class="bar"><span class="fill ${cls}" style="width:${pct.toFixed(1)}%;"></span></div>
             </div>
           `;
         }).join("")}
@@ -1166,7 +1180,7 @@
     renderWeek();
   }
 
-  // ---------- Dish CRUD (icons) ----------
+  // ---------- Dish CRUD ----------
   function clearDishForm(){
     elDishName.value = "";
     elDishCal.value = "";
@@ -1606,82 +1620,60 @@
       wrap.className = "dayCard" + (locked ? " locked" : "");
       wrap.innerHTML = `
         <div class="dayHeader">
-  <div class="dayTopRow">
-    <div class="dayLeft">
-      <strong>${day}${locked ? " 🔒" : ""}</strong>
-      <div class="micro">
-        <span>${formatDate(dateObj)}</span>
-        ${weatherHTML}
-      </div>
-    </div>
+          <div class="dayTopRow">
+            <div class="dayLeft">
+              <strong>${day}${locked ? " 🔒" : ""}</strong>
+              <div class="micro">
+                <span>${formatDate(dateObj)}</span>
+                ${weatherHTML}
+              </div>
+            </div>
 
-    <div class="dayRight">
-      <div class="dayTotalsInline">
-        <div class="kcal">${Math.round(tot.cal)} kcal</div>
-        <div class="micro">
-          ${Math.round(tot.protein)}P • 
-          ${Math.round(tot.carbs)}C • 
-          ${Math.round(tot.fat)}F
-        </div>
-      </div>
+            <div class="dayRight">
+              <div class="dayTotalsInline" title="Day totals">
+                <div class="kcal">${Math.round(tot.cal)} kcal</div>
+                <div class="micro">${Math.round(tot.protein)}P • ${Math.round(tot.carbs)}C • ${Math.round(tot.fat)}F</div>
+              </div>
 
-      <div class="dayMenu">
-        <button class="kebabBtn" type="button" data-kebab="1">
-          <span class="kebabDots">⋯</span>
-        </button>
-
-        <div class="menuPanel" data-menu="1">
-          <!-- menu items -->
-        </div>
-      </div>
-    </div>
-  </div>
-
-  ${macroProgressHTML(tot)}
-</div>
-
-            <div class="dayMenu">
-              <button class="kebabBtn" type="button" data-kebab="1" aria-label="Day menu" title="Day menu">
-                <span class="kebabDots">⋯</span>
-              </button>
-
-              <div class="menuPanel" data-menu="1" role="menu" aria-label="Day actions">
-                <button class="menuItem" type="button" data-action="copy" role="menuitem">
-                  <span class="menuIcon">📋</span><span>Copy day</span>
-                </button>
-                <button class="menuItem ${state.ui.dayClipboard ? "" : "disabled"}" type="button" data-action="paste" role="menuitem" ${state.ui.dayClipboard ? "" : "aria-disabled='true'"}>
-                  <span class="menuIcon">📥</span><span>Paste day</span>
+              <div class="dayMenu">
+                <button class="kebabBtn" type="button" data-kebab="1" aria-label="Day menu" title="Day menu">
+                  <span class="kebabDots">⋯</span>
                 </button>
 
-                <div class="menuDivider"></div>
+                <div class="menuPanel" data-menu="1" role="menu" aria-label="Day actions">
+                  <button class="menuItem" type="button" data-action="copy" role="menuitem">
+                    <span class="menuIcon">📋</span><span>Copy day</span>
+                  </button>
+                  <button class="menuItem ${state.ui.dayClipboard ? "" : "disabled"}" type="button" data-action="paste" role="menuitem" ${state.ui.dayClipboard ? "" : "aria-disabled='true'"}>
+                    <span class="menuIcon">📥</span><span>Paste day</span>
+                  </button>
 
-                <button class="menuItem ${locked ? "disabled" : ""}" type="button" data-action="fill" role="menuitem" ${locked ? "aria-disabled='true'" : ""}>
-                  <span class="menuIcon">✨</span><span>Fill empty meals</span>
-                </button>
-                <button class="menuItem ${locked ? "disabled" : ""}" type="button" data-action="shuffle" role="menuitem" ${locked ? "aria-disabled='true'" : ""}>
-                  <span class="menuIcon">🔀</span><span>Shuffle day</span>
-                </button>
+                  <div class="menuDivider"></div>
 
-                <div class="menuDivider"></div>
+                  <button class="menuItem ${locked ? "disabled" : ""}" type="button" data-action="fill" role="menuitem" ${locked ? "aria-disabled='true'" : ""}>
+                    <span class="menuIcon">✨</span><span>Fill empty meals</span>
+                  </button>
+                  <button class="menuItem ${locked ? "disabled" : ""}" type="button" data-action="shuffle" role="menuitem" ${locked ? "aria-disabled='true'" : ""}>
+                    <span class="menuIcon">🔀</span><span>Shuffle day</span>
+                  </button>
 
-                <button class="menuItem" type="button" data-action="lock" role="menuitem">
-                  <span class="menuIcon">${locked ? "🔓" : "🔒"}</span><span>${locked ? "Unlock day" : "Lock day"}</span>
-                </button>
+                  <div class="menuDivider"></div>
 
-                <div class="menuDivider"></div>
+                  <button class="menuItem" type="button" data-action="lock" role="menuitem">
+                    <span class="menuIcon">${locked ? "🔓" : "🔒"}</span><span>${locked ? "Unlock day" : "Lock day"}</span>
+                  </button>
 
-                <button class="menuItem danger ${locked ? "disabled" : ""}" type="button" data-action="clear" role="menuitem" ${locked ? "aria-disabled='true'" : ""}>
-                  <span class="menuIcon">🧹</span><span>Clear this day</span>
-                </button>
+                  <div class="menuDivider"></div>
+
+                  <button class="menuItem danger ${locked ? "disabled" : ""}" type="button" data-action="clear" role="menuitem" ${locked ? "aria-disabled='true'" : ""}>
+                    <span class="menuIcon">🧹</span><span>Clear this day</span>
+                  </button>
+                </div>
               </div>
             </div>
           </div>
 
-          <div class="totalsBox">
-            <div class="kcal">${Math.round(tot.cal)} kcal</div>
-            <div class="micro">${Math.round(tot.protein)}g P • ${Math.round(tot.carbs)}g C • ${Math.round(tot.fat)}g F</div>
-            ${macroProgressHTML(tot)}
-          </div>
+          ${macroProgressHTML(tot)}
         </div>
 
         <div class="meals">
@@ -1711,7 +1703,8 @@
                 </div>
 
                 <div class="mealBtn">
-                  <button class="smallBtn" type="button" disabled style="opacity:.55;cursor:not-allowed;">Edit</button>
+                  <!-- Uniform pencil icon (disabled for now) -->
+                  <button class="miniIcon" type="button" title="Edit" aria-label="Edit" disabled style="opacity:.55;cursor:not-allowed;">✏️</button>
                 </div>
               </div>
             `;
@@ -1719,7 +1712,7 @@
         </div>
       `;
 
-      // Kebab menu wiring
+      // Kebab menu wiring (no document listeners added here)
       const kebabBtn = wrap.querySelector('[data-kebab="1"]');
       const menu = wrap.querySelector('[data-menu="1"]');
       kebabBtn.addEventListener("click", (ev) => {
@@ -1940,7 +1933,10 @@
     const label = fmtRange(weekStart);
     if (!confirm(`Clear ALL days for this week (${label})? This cannot be undone.`)) return;
     const plan = ensureWeekPlan();
-    DAYS.forEach(d => { if (!plan[d]._locked) plan[d] = emptyDay(); else { const wasLocked = true; plan[d] = emptyDay(); plan[d]._locked = wasLocked; } });
+    DAYS.forEach(d => {
+      if (!plan[d]._locked) plan[d] = emptyDay();
+      else { const wasLocked = true; plan[d] = emptyDay(); plan[d]._locked = wasLocked; }
+    });
     saveState();
     renderWeek();
   });
@@ -1965,6 +1961,7 @@
   document.getElementById("importBulk").addEventListener("click", importBulkCSV);
   elDishName.addEventListener("keydown", (e)=>{ if(e.key==="Enter"){ e.preventDefault(); saveDishFromForm(); } });
 
+  // defaults for form
   catBreakfast.checked = true;
   catLunch.checked = true;
   catDinner.checked = true;
