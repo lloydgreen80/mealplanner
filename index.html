@@ -744,16 +744,11 @@
 (() => {
   const DAYS = ["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday","Sunday"];
   const MEALS = ["Breakfast","Lunch","Dinner"];
-  const KEY = "mealPlanner.macro.v19";
+  const KEY = "mealPlanner.macro.v20"; // bumped version
   const THEME_KEY = "mealPlanner.theme";
   const KITCHEN_LABEL = "Kitchen";
 
   // STRICT repeat rules configuration:
-  // - No repeats in a day ✅
-  // - No repeats in a week ✅
-  // - No repeats vs previous N weeks ✅
-  // - Must keep Calories & Carbs within tolerance window ✅ (strict on completion of the day)
-  // If impossible due to dish count/rules, it leaves blanks.
   const STRICT_NO_REPEATS = true;
   const NO_REPEAT_WEEKS_BACK = 4;
 
@@ -772,12 +767,7 @@
   function defaultState() {
     return {
       targets: { cal: 2200, protein: 160, carbs: 220, fat: 70 },
-      tolerances: {
-        calUnderPct: 50,  // can be under by 50%
-        calOverPct: 5,    // can be over by 5%
-        carbsUnderPct: 50,
-        carbsOverPct: 5
-      },
+      tolerances: { calUnderPct: 50, calOverPct: 5, carbsUnderPct: 50, carbsOverPct: 5 },
       dishes: [
         {
           id: crypto.randomUUID(),
@@ -805,18 +795,15 @@
         }
       ],
       planByWeekStart: {},
-      ui: {
-        selectedDishId: null,
-        dayClipboard: null,
-        expandedIngredients: {}
-      },
+      ui: { selectedDishId: null, dayClipboard: null, expandedIngredients: {} },
       weather: { enabled: false, locationName: "", lat: null, lon: null, tz: Intl.DateTimeFormat().resolvedOptions().timeZone || "auto", cacheByWeek: {} },
       uiPrefs: { pantryCollapsedMobile: false }
     };
   }
 
   function loadState() {
-    const tryKeys = [KEY, "mealPlanner.macro.v18", "mealPlanner.macro.v17", "mealPlanner.macro.v16", "mealPlanner.macro.v15", "mealPlanner.macro.v14", "mealPlanner.macro.v13", "mealPlanner.macro.v12", "mealPlanner.macro.v11", "mealPlanner.macro.v10"];
+    // migrate older keys forward
+    const tryKeys = [KEY, "mealPlanner.macro.v19", "mealPlanner.macro.v18", "mealPlanner.macro.v17", "mealPlanner.macro.v16", "mealPlanner.macro.v15"];
     for (const k of tryKeys) {
       const raw = localStorage.getItem(k);
       if (!raw) continue;
@@ -829,8 +816,7 @@
         parsed.tolerances = { ...def.tolerances, ...(parsed.tolerances || {}) };
         parsed.ui = { ...def.ui, ...(parsed.ui || {}) };
         parsed.ui.expandedIngredients = parsed.ui.expandedIngredients && typeof parsed.ui.expandedIngredients === "object"
-          ? parsed.ui.expandedIngredients
-          : {};
+          ? parsed.ui.expandedIngredients : {};
         parsed.weather = { ...def.weather, ...(parsed.weather || {}) };
         parsed.uiPrefs = { ...def.uiPrefs, ...(parsed.uiPrefs || {}) };
 
@@ -1172,6 +1158,24 @@
     return { calMin, calMax, carbMin, carbMax };
   }
 
+  // ---------- Category validation ----------
+  function isDishAllowedForMeal(dish, meal){
+    if (!dish) return false;
+    const cats = dish.categories || {};
+    // allow if explicitly true; (undefined treated as true for backwards compat)
+    if (cats[meal] === false) return false;
+    return true;
+  }
+
+  // Manual override warning (tap + drag/drop)
+  function confirmCategoryMismatchIfNeeded(dish, meal){
+    if (!dish) return false;
+    if (isDishAllowedForMeal(dish, meal)) return true;
+
+    // Warning but allow override
+    return confirm(`“${dish.name}” isn’t tagged for ${meal}.\n\nAssign anyway?`);
+  }
+
   // ---------- Tap-to-assign ----------
   function setSelectedDish(id){
     state.ui.selectedDishId = id;
@@ -1199,9 +1203,11 @@
     const plan = ensureWeekPlan();
     if (plan[day]._locked) return toast(`${day} is locked`, "warn");
 
-    if (dish.categories && dish.categories[meal] === false) {
-      toast(`Warning: “${dish.name}” isn’t tagged for ${meal}`, "warn");
+    if (!confirmCategoryMismatchIfNeeded(dish, meal)) {
+      toast("Assignment cancelled");
+      return;
     }
+
     plan[day][meal] = { dishId: id, servings: 1 };
     saveState();
     renderWeek();
@@ -1459,7 +1465,7 @@
     return ["1","true","yes","y","t"].includes(s);
   }
 
-  // ---------- Robust CSV parsing (supports quoted multiline fields) ----------
+  // ---------- Robust CSV parsing ----------
   function detectDelimiterFromHeader(text){
     const firstLine = (text || "").split(/\r?\n/)[0] || "";
     const candidates = [",",";","\t"];
@@ -1655,11 +1661,7 @@
 
   // ---------- JSON Export / Import ----------
   function exportJSON(){
-    const payload = {
-      version: 1,
-      exportedAt: new Date().toISOString(),
-      data: state
-    };
+    const payload = { version: 1, exportedAt: new Date().toISOString(), data: state };
     const json = JSON.stringify(payload, null, 2);
     const blob = new Blob([json], { type:"application/json" });
     const url = URL.createObjectURL(blob);
@@ -1680,8 +1682,7 @@
     s.tolerances = { ...def.tolerances, ...(s.tolerances || {}) };
     s.ui = { ...def.ui, ...(s.ui || {}) };
     s.ui.expandedIngredients = s.ui.expandedIngredients && typeof s.ui.expandedIngredients === "object"
-      ? s.ui.expandedIngredients
-      : {};
+      ? s.ui.expandedIngredients : {};
     s.weather = { ...def.weather, ...(s.weather || {}) };
     s.uiPrefs = { ...def.uiPrefs, ...(s.uiPrefs || {}) };
     s.planByWeekStart = s.planByWeekStart || {};
@@ -1696,9 +1697,7 @@
       fat: Number(d.fat) || 0,
       book: (d.book || "").trim(),
       page: (d.page === "" || d.page == null) ? null : Number(d.page),
-      ingredients: Array.isArray(d.ingredients)
-        ? d.ingredients.map(x => String(x).trim()).filter(Boolean)
-        : parseIngredientsFromText(d.ingredients || ""),
+      ingredients: Array.isArray(d.ingredients) ? d.ingredients.map(x => String(x).trim()).filter(Boolean) : parseIngredientsFromText(d.ingredients || ""),
       categories: { Breakfast:true, Lunch:true, Dinner:true, ...(d.categories || {}) }
     })).filter(d => d.name);
 
@@ -1716,20 +1715,14 @@
 
   function mergeState(current, imported){
     const merged = structuredClone(current);
-
     merged.targets = { ...merged.targets, ...(imported.targets || {}) };
     merged.tolerances = { ...merged.tolerances, ...(imported.tolerances || {}) };
-
     merged.weather = { ...merged.weather, ...(imported.weather || {}) };
     if (merged.weather) merged.weather.cacheByWeek = {};
 
     const byName = new Map();
-    for (const d of merged.dishes){
-      byName.set(d.name.toLowerCase(), d);
-    }
-    for (const d of imported.dishes || []){
-      byName.set(d.name.toLowerCase(), d);
-    }
+    for (const d of merged.dishes) byName.set(d.name.toLowerCase(), d);
+    for (const d of imported.dishes || []) byName.set(d.name.toLowerCase(), d);
     merged.dishes = Array.from(byName.values());
 
     merged.planByWeekStart = { ...(merged.planByWeekStart || {}), ...(imported.planByWeekStart || {}) };
@@ -1737,8 +1730,7 @@
     merged.uiPrefs = { ...(merged.uiPrefs || {}), ...(current.uiPrefs || {}) };
     merged.ui = { ...(merged.ui || {}), ...(current.ui || {}) };
     merged.ui.expandedIngredients = merged.ui.expandedIngredients && typeof merged.ui.expandedIngredients === "object"
-      ? merged.ui.expandedIngredients
-      : {};
+      ? merged.ui.expandedIngredients : {};
 
     return merged;
   }
@@ -1746,25 +1738,15 @@
   async function importJSONFromFile(file){
     if (!file) return toast("Choose a JSON file first", "warn");
     let text = "";
-    try {
-      text = await file.text();
-    } catch {
-      return toast("Couldn't read file", "warn");
-    }
+    try { text = await file.text(); } catch { return toast("Couldn't read file", "warn"); }
 
     let parsed;
-    try {
-      parsed = JSON.parse(text);
-    } catch {
-      return toast("Invalid JSON", "warn");
-    }
+    try { parsed = JSON.parse(text); } catch { return toast("Invalid JSON", "warn"); }
 
     const incomingData = parsed && parsed.data ? parsed.data : parsed;
     const normalized = normalizeImportedState(incomingData);
 
-    const replace = confirm(
-      "Import JSON:\n\nOK = REPLACE everything on this device\nCancel = MERGE into existing data"
-    );
+    const replace = confirm("Import JSON:\n\nOK = REPLACE everything on this device\nCancel = MERGE into existing data");
 
     if (replace) {
       state = normalized;
@@ -1804,11 +1786,16 @@
   }
 
   // ---------- Smart fill helpers ----------
-  function dishesForMeal(meal){ return state.dishes.filter(d => !!d.categories?.[meal]); }
+  function dishesForMeal(meal){
+    // ONLY dishes explicitly allowed for that meal
+    return state.dishes.filter(d => isDishAllowedForMeal(d, meal) && !!d.categories?.[meal]);
+  }
+
   function hasTargets(){
     const tar = state.targets || {};
     return (tar.cal||0) > 0 || (tar.protein||0) > 0 || (tar.carbs||0) > 0 || (tar.fat||0) > 0;
   }
+
   function scoreAgainstTargets(tot){
     const tar = state.targets || { cal:0, protein:0, carbs:0, fat:0 };
     if (!hasTargets()) return 0;
@@ -1824,10 +1811,17 @@
       1.1 * term(tot.fat, tar.fat)
     );
   }
+
   function dayTotalsIfAddDish(dayObj, dish){
     const t = dayTotals(dayObj);
-    return { cal:t.cal+(+dish.cal||0), protein:t.protein+(+dish.protein||0), carbs:t.carbs+(+dish.carbs||0), fat:t.fat+(+dish.fat||0) };
+    return {
+      cal:t.cal+(+dish.cal||0),
+      protein:t.protein+(+dish.protein||0),
+      carbs:t.carbs+(+dish.carbs||0),
+      fat:t.fat+(+dish.fat||0)
+    };
   }
+
   function remainingEmptySlots(dayObj){
     let n = 0;
     for (const meal of MEALS){
@@ -1836,12 +1830,10 @@
     return n;
   }
 
-  // --- used sets for prior weeks ---
   function getUsedDishIdsForWeek(weekIso){
     const plan = state.planByWeekStart?.[weekIso];
     const used = new Set();
     if (!plan) return used;
-
     for (const day of DAYS){
       const dayObj = plan[day];
       if (!dayObj) continue;
@@ -1865,17 +1857,16 @@
   }
 
   // STRICT picker:
+  // - CATEGORY STRICT: only picks dishes allowed for the specific meal (NO fallback to other categories)
   // - no repeats (day/week/history)
   // - does not allow exceeding Calories/Carbs MAX at any time
   // - if this pick would COMPLETE the day (last empty slot), it must ALSO meet Calories/Carbs MIN
   function smartPickDishForMeal(dayObj, meal, usedDayIds, usedWeekIds, usedHistoryIds, emptySlotsBeforePick){
     const avoid = new Set([...usedDayIds, ...usedWeekIds, ...usedHistoryIds]);
-
     const bounds = getBounds();
     const tar = state.targets || {};
     const enforceCal = (Number(tar.cal)||0) > 0;
     const enforceCarb = (Number(tar.carbs)||0) > 0;
-
     const needMeetMinAtEnd = (emptySlotsBeforePick === 1);
 
     function okProjected(proj){
@@ -1889,24 +1880,16 @@
       return true;
     }
 
-    function filterPool(arr){
-      const out = [];
-      for (const d of arr){
-        if (avoid.has(d.id)) continue;
-        const proj = dayTotalsIfAddDish(dayObj, d);
-        if (!okProjected(proj)) continue;
-        out.push(d);
-      }
-      return out;
+    const poolAll = dishesForMeal(meal); // strict category pool
+    const pool = [];
+    for (const d of poolAll){
+      if (avoid.has(d.id)) continue;
+      const proj = dayTotalsIfAddDish(dayObj, d);
+      if (!okProjected(proj)) continue;
+      pool.push(d);
     }
 
-    const primaryAll = dishesForMeal(meal);
-    const fallbackAll = state.dishes;
-
-    const primary = filterPool(primaryAll);
-    const fallback = filterPool(fallbackAll);
-    const pool = primary.length ? primary : fallback;
-
+    // If no eligible dishes for that meal, leave empty (do NOT use wrong category)
     if (!pool.length) return null;
 
     if (!hasTargets()){
@@ -1985,23 +1968,21 @@
     renderWeek();
 
     if (failed > 0){
-      toast(`Filled ${placed} slot(s). ${failed} left empty (strict rules).`, "warn");
+      toast(`Filled ${placed} slot(s). ${failed} left empty (no eligible ${failed===1?"dish":"dishes"} for category/tolerance).`, "warn");
     } else {
       toast(`Filled empty meals for ${day}`);
     }
   }
 
+  // (Optional) keep shuffle-day category safe too (so it can’t create category mismatches)
   function shuffleDay(plan, day){
     if (isDayLocked(plan, day)) return toast(`${day} is locked`, "warn");
     if (!state.dishes.length) return toast("Add dishes first", "warn");
     if (!confirm(`Shuffle all meals for ${day}?`)) return;
 
-    // Local-day shuffle only; does not apply tolerance rules (kept from earlier behavior).
     const used = new Set();
     for (const meal of MEALS){
-      const primary = dishesForMeal(meal).filter(d => !used.has(d.id));
-      const fallback = state.dishes.filter(d => !used.has(d.id));
-      const pool = primary.length ? primary : fallback;
+      const pool = dishesForMeal(meal).filter(d => !used.has(d.id));
       if (!pool.length) continue;
       const pick = pool[Math.floor(Math.random()*pool.length)];
       plan[day][meal] = { dishId: pick.id, servings: 1 };
@@ -2044,7 +2025,6 @@
 
     const usedHistory = STRICT_NO_REPEATS ? getUsedDishIdsFromPreviousWeeks(weekStart, NO_REPEAT_WEEKS_BACK) : new Set();
 
-    // already used in this week (including existing meals)
     const usedWeek = new Set();
     for (const day of DAYS){
       const dayObj = plan[day];
@@ -2088,7 +2068,7 @@
     renderWeek();
 
     if (failed > 0) {
-      toast(`Filled ${placed} slot(s). ${failed} left empty (strict rules).`, "warn");
+      toast(`Filled ${placed} slot(s). ${failed} left empty (no eligible dishes for category/tolerance).`, "warn");
     } else {
       toast("Filled empty meals (strict)");
     }
@@ -2101,7 +2081,6 @@
 
     const usedHistory = STRICT_NO_REPEATS ? getUsedDishIdsFromPreviousWeeks(weekStart, NO_REPEAT_WEEKS_BACK) : new Set();
 
-    // locked days count as already used (so we don't duplicate them)
     const usedWeek = new Set();
     for (const day of DAYS){
       const dayObj = plan[day];
@@ -2120,7 +2099,6 @@
     for (const day of DAYS){
       if (isDayLocked(plan, day)) continue;
 
-      // Clear unlocked day
       plan[day].Breakfast = emptyMeal();
       plan[day].Lunch = emptyMeal();
       plan[day].Dinner = emptyMeal();
@@ -2128,7 +2106,7 @@
       const usedDay = new Set();
 
       for (const meal of MEALS){
-        const emptiesBefore = remainingEmptySlots(plan[day]); // will be 3, then 2, then 1
+        const emptiesBefore = remainingEmptySlots(plan[day]);
         const pick = STRICT_NO_REPEATS
           ? smartPickDishForMeal(plan[day], meal, usedDay, usedWeek, usedHistory, emptiesBefore)
           : smartPickDishForMeal(plan[day], meal, usedDay, new Set(), new Set(), emptiesBefore);
@@ -2145,7 +2123,7 @@
     renderWeek();
 
     if (failed > 0) {
-      toast(`Shuffled. Set ${placed} slot(s). ${failed} left empty (strict rules).`, "warn");
+      toast(`Shuffled. Set ${placed} slot(s). ${failed} left empty (no eligible dishes for category/tolerance).`, "warn");
     } else {
       toast("Shuffled week (strict)");
     }
@@ -2426,9 +2404,13 @@
 
           if (payload.type === "dish") {
             const dish = getDish(payload.dishId);
-            if (dish && dish.categories && dish.categories[mealName] === false) {
-              toast(`Warning: “${dish.name}” isn’t tagged for ${mealName}`, "warn");
+            if (!dish) return;
+
+            if (!confirmCategoryMismatchIfNeeded(dish, mealName)) {
+              toast("Drop cancelled");
+              return;
             }
+
             plan[dayName][mealName] = { dishId: payload.dishId, servings: 1 };
             saveState();
             renderWeek();
@@ -2457,8 +2439,7 @@
     elDishList.innerHTML = "";
 
     state.ui.expandedIngredients = state.ui.expandedIngredients && typeof state.ui.expandedIngredients === "object"
-      ? state.ui.expandedIngredients
-      : {};
+      ? state.ui.expandedIngredients : {};
 
     list.forEach(d => {
       const el = document.createElement("div");
@@ -2662,13 +2643,9 @@
   document.getElementById("importBulk").addEventListener("click", importBulkCSV);
   elDishName.addEventListener("keydown", (e)=>{ if(e.key==="Enter"){ e.preventDefault(); saveDishFromForm(); } });
 
-  importCsvFileBtn.addEventListener("click", async () => {
-    await importCsvFromFile(csvFile.files?.[0]);
-  });
+  importCsvFileBtn.addEventListener("click", async () => { await importCsvFromFile(csvFile.files?.[0]); });
   exportJsonBtn.addEventListener("click", exportJSON);
-  importJsonFileBtn.addEventListener("click", async () => {
-    await importJSONFromFile(jsonFile.files?.[0]);
-  });
+  importJsonFileBtn.addEventListener("click", async () => { await importJSONFromFile(jsonFile.files?.[0]); });
 
   catBreakfast.checked = true;
   catLunch.checked = true;
