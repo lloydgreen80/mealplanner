@@ -1606,14 +1606,39 @@
       wrap.className = "dayCard" + (locked ? " locked" : "");
       wrap.innerHTML = `
         <div class="dayHeader">
-          <div class="dayTitle">
-            <div class="left">
-              <strong>${day}${locked ? " 🔒" : ""}</strong>
-              <div class="micro">
-                <span>${formatDate(dateObj)}</span>
-                ${weatherHTML}
-              </div>
-            </div>
+  <div class="dayTopRow">
+    <div class="dayLeft">
+      <strong>${day}${locked ? " 🔒" : ""}</strong>
+      <div class="micro">
+        <span>${formatDate(dateObj)}</span>
+        ${weatherHTML}
+      </div>
+    </div>
+
+    <div class="dayRight">
+      <div class="dayTotalsInline">
+        <div class="kcal">${Math.round(tot.cal)} kcal</div>
+        <div class="micro">
+          ${Math.round(tot.protein)}P • 
+          ${Math.round(tot.carbs)}C • 
+          ${Math.round(tot.fat)}F
+        </div>
+      </div>
+
+      <div class="dayMenu">
+        <button class="kebabBtn" type="button" data-kebab="1">
+          <span class="kebabDots">⋯</span>
+        </button>
+
+        <div class="menuPanel" data-menu="1">
+          <!-- menu items -->
+        </div>
+      </div>
+    </div>
+  </div>
+
+  ${macroProgressHTML(tot)}
+</div>
 
             <div class="dayMenu">
               <button class="kebabBtn" type="button" data-kebab="1" aria-label="Day menu" title="Day menu">
