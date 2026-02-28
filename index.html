@@ -582,8 +582,31 @@
             </div>
           </div>
 
+          <div class="targetsGrid" style="margin-top:12px;">
+            <div class="field">
+              <label for="tolCalUnder">Calories under tolerance (%)</label>
+              <input id="tolCalUnder" type="number" min="0" max="100" step="1" placeholder="50" />
+              <div class="micro">Allowed as low as target minus this %.</div>
+            </div>
+            <div class="field">
+              <label for="tolCalOver">Calories over tolerance (%)</label>
+              <input id="tolCalOver" type="number" min="0" max="100" step="1" placeholder="5" />
+              <div class="micro">Allowed up to target plus this %.</div>
+            </div>
+            <div class="field">
+              <label for="tolCarbUnder">Carbs under tolerance (%)</label>
+              <input id="tolCarbUnder" type="number" min="0" max="100" step="1" placeholder="50" />
+              <div class="micro">Allowed as low as target minus this %.</div>
+            </div>
+            <div class="field">
+              <label for="tolCarbOver">Carbs over tolerance (%)</label>
+              <input id="tolCarbOver" type="number" min="0" max="100" step="1" placeholder="5" />
+              <div class="micro">Allowed up to target plus this %.</div>
+            </div>
+          </div>
+
           <div class="row" style="justify-content:space-between; margin-top:10px;">
-            <div class="muted">Used by smart fill + daily bars.</div>
+            <div class="muted">Smart fill + Shuffle use tolerances for Calories &amp; Carbs.</div>
             <button id="saveTargets" class="smallBtn" type="button">Save targets</button>
           </div>
         </details>
@@ -675,10 +698,9 @@
         <div class="week" id="week"></div>
 
         <div class="hintBox">
-          Macro bars: under target = amber, exact target = green, over target = red.
-          <br/>
-          Smart fill + Shuffle week use <b>strict no-repeats</b>: no duplicates in a day, no duplicates in a week, and no repeats vs previous weeks (where possible).
-          If there aren’t enough dishes, some slots will remain empty.
+          Smart fill + Shuffle week are <b>strict</b>:
+          no repeats (day/week/previous weeks) and must fit within the <b>Calories &amp; Carbs</b> tolerance window.
+          If there aren’t enough eligible dishes, some slots will remain empty.
         </div>
       </section>
     </div>
@@ -722,7 +744,7 @@
 (() => {
   const DAYS = ["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday","Sunday"];
   const MEALS = ["Breakfast","Lunch","Dinner"];
-  const KEY = "mealPlanner.macro.v18";
+  const KEY = "mealPlanner.macro.v19";
   const THEME_KEY = "mealPlanner.theme";
   const KITCHEN_LABEL = "Kitchen";
 
@@ -730,11 +752,11 @@
   // - No repeats in a day ✅
   // - No repeats in a week ✅
   // - No repeats vs previous N weeks ✅
-  // If impossible due to dish count, leave blanks (STRICT behavior).
+  // - Must keep Calories & Carbs within tolerance window ✅ (strict on completion of the day)
+  // If impossible due to dish count/rules, it leaves blanks.
   const STRICT_NO_REPEATS = true;
-  const NO_REPEAT_WEEKS_BACK = 4; // change to 1/2/3/4 etc
+  const NO_REPEAT_WEEKS_BACK = 4;
 
-  // SVG icons (list + close). Uses currentColor.
   const ICON_LIST = `
     <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
       <path d="M8 6h13M8 12h13M8 18h13" stroke-width="2" stroke-linecap="round"/>
@@ -750,6 +772,12 @@
   function defaultState() {
     return {
       targets: { cal: 2200, protein: 160, carbs: 220, fat: 70 },
+      tolerances: {
+        calUnderPct: 50,  // can be under by 50%
+        calOverPct: 5,    // can be over by 5%
+        carbsUnderPct: 50,
+        carbsOverPct: 5
+      },
       dishes: [
         {
           id: crypto.randomUUID(),
@@ -788,7 +816,7 @@
   }
 
   function loadState() {
-    const tryKeys = [KEY, "mealPlanner.macro.v17", "mealPlanner.macro.v16", "mealPlanner.macro.v15", "mealPlanner.macro.v14", "mealPlanner.macro.v13", "mealPlanner.macro.v12", "mealPlanner.macro.v11", "mealPlanner.macro.v10"];
+    const tryKeys = [KEY, "mealPlanner.macro.v18", "mealPlanner.macro.v17", "mealPlanner.macro.v16", "mealPlanner.macro.v15", "mealPlanner.macro.v14", "mealPlanner.macro.v13", "mealPlanner.macro.v12", "mealPlanner.macro.v11", "mealPlanner.macro.v10"];
     for (const k of tryKeys) {
       const raw = localStorage.getItem(k);
       if (!raw) continue;
@@ -798,6 +826,7 @@
 
         const def = defaultState();
         parsed.targets = { ...def.targets, ...(parsed.targets || {}) };
+        parsed.tolerances = { ...def.tolerances, ...(parsed.tolerances || {}) };
         parsed.ui = { ...def.ui, ...(parsed.ui || {}) };
         parsed.ui.expandedIngredients = parsed.ui.expandedIngredients && typeof parsed.ui.expandedIngredients === "object"
           ? parsed.ui.expandedIngredients
@@ -929,6 +958,11 @@
   const tCarbs = document.getElementById("tCarbs");
   const tFat = document.getElementById("tFat");
 
+  const tolCalUnder = document.getElementById("tolCalUnder");
+  const tolCalOver = document.getElementById("tolCalOver");
+  const tolCarbUnder = document.getElementById("tolCarbUnder");
+  const tolCarbOver = document.getElementById("tolCarbOver");
+
   // Add/import section
   const dishAdminDetails = document.getElementById("dishAdminDetails");
   const elDishName = document.getElementById("dishName");
@@ -967,7 +1001,6 @@
   const togglePantryBtn = document.getElementById("togglePantry");
   const mobilePantryStatus = document.getElementById("mobilePantryStatus");
 
-  // Apply kitchen label
   const kitchenTitle = document.getElementById("kitchenTitle");
   if (kitchenTitle) kitchenTitle.textContent = KITCHEN_LABEL;
 
@@ -988,10 +1021,10 @@
     if (kind === "warn") el.classList.add("toastWarn");
     el.textContent = msg;
     el.style.opacity = "1";
-    setTimeout(()=> el.style.opacity="0", 1700);
+    setTimeout(()=> el.style.opacity="0", 1900);
   }
 
-  // IMPORTANT: removes only blank lines; keeps other content.
+  // removes only blank lines; keeps other content.
   function normalizeName(s){
     const raw = String(s ?? "");
     const lines = raw.split(/\r?\n/).map(l => l.trim()).filter(l => l.length > 0);
@@ -1106,6 +1139,37 @@
         }).join("")}
       </div>
     `;
+  }
+
+  // ---------- Tolerance bounds ----------
+  function clampPct(x, def){
+    const n = Number(x);
+    if (!Number.isFinite(n)) return def;
+    return Math.max(0, Math.min(100, n));
+  }
+  function getTol(){
+    const def = defaultState().tolerances;
+    const t = state.tolerances || {};
+    return {
+      calUnderPct: clampPct(t.calUnderPct, def.calUnderPct),
+      calOverPct: clampPct(t.calOverPct, def.calOverPct),
+      carbsUnderPct: clampPct(t.carbsUnderPct, def.carbsUnderPct),
+      carbsOverPct: clampPct(t.carbsOverPct, def.carbsOverPct),
+    };
+  }
+  function getBounds(){
+    const tar = state.targets || {};
+    const tol = getTol();
+    const calT = Number(tar.cal)||0;
+    const carbT = Number(tar.carbs)||0;
+
+    const calMin = calT > 0 ? calT * (1 - tol.calUnderPct/100) : -Infinity;
+    const calMax = calT > 0 ? calT * (1 + tol.calOverPct/100) : Infinity;
+
+    const carbMin = carbT > 0 ? carbT * (1 - tol.carbsUnderPct/100) : -Infinity;
+    const carbMax = carbT > 0 ? carbT * (1 + tol.carbsOverPct/100) : Infinity;
+
+    return { calMin, calMax, carbMin, carbMax };
   }
 
   // ---------- Tap-to-assign ----------
@@ -1613,6 +1677,7 @@
     const def = defaultState();
     const s = incoming && typeof incoming === "object" ? incoming : {};
     s.targets = { ...def.targets, ...(s.targets || {}) };
+    s.tolerances = { ...def.tolerances, ...(s.tolerances || {}) };
     s.ui = { ...def.ui, ...(s.ui || {}) };
     s.ui.expandedIngredients = s.ui.expandedIngredients && typeof s.ui.expandedIngredients === "object"
       ? s.ui.expandedIngredients
@@ -1653,6 +1718,7 @@
     const merged = structuredClone(current);
 
     merged.targets = { ...merged.targets, ...(imported.targets || {}) };
+    merged.tolerances = { ...merged.tolerances, ...(imported.tolerances || {}) };
 
     merged.weather = { ...merged.weather, ...(imported.weather || {}) };
     if (merged.weather) merged.weather.cacheByWeek = {};
@@ -1718,13 +1784,19 @@
     toast("Imported (merged)");
   }
 
-  // ---------- Targets ----------
+  // ---------- Targets & tolerances ----------
   function saveTargets(){
     state.targets = {
       cal: Number(tCal.value) || 0,
       protein: Number(tProtein.value) || 0,
       carbs: Number(tCarbs.value) || 0,
       fat: Number(tFat.value) || 0
+    };
+    state.tolerances = {
+      calUnderPct: clampPct(tolCalUnder.value, 50),
+      calOverPct: clampPct(tolCalOver.value, 5),
+      carbsUnderPct: clampPct(tolCarbUnder.value, 50),
+      carbsOverPct: clampPct(tolCarbOver.value, 5),
     };
     saveState();
     renderWeek();
@@ -1756,8 +1828,15 @@
     const t = dayTotals(dayObj);
     return { cal:t.cal+(+dish.cal||0), protein:t.protein+(+dish.protein||0), carbs:t.carbs+(+dish.carbs||0), fat:t.fat+(+dish.fat||0) };
   }
+  function remainingEmptySlots(dayObj){
+    let n = 0;
+    for (const meal of MEALS){
+      if (!dayObj[meal]?.dishId) n++;
+    }
+    return n;
+  }
 
-  // --- New: build "used" sets for prior weeks ---
+  // --- used sets for prior weeks ---
   function getUsedDishIdsForWeek(weekIso){
     const plan = state.planByWeekStart?.[weekIso];
     const used = new Set();
@@ -1785,11 +1864,47 @@
     return used;
   }
 
-  // STRICT picker: no repeats in day/week/history. If none available -> null (leave empty).
-  function smartPickDishForMeal(dayObj, meal, usedDayIds, usedWeekIds, usedHistoryIds){
+  // STRICT picker:
+  // - no repeats (day/week/history)
+  // - does not allow exceeding Calories/Carbs MAX at any time
+  // - if this pick would COMPLETE the day (last empty slot), it must ALSO meet Calories/Carbs MIN
+  function smartPickDishForMeal(dayObj, meal, usedDayIds, usedWeekIds, usedHistoryIds, emptySlotsBeforePick){
     const avoid = new Set([...usedDayIds, ...usedWeekIds, ...usedHistoryIds]);
-    const primary = dishesForMeal(meal).filter(d => !avoid.has(d.id));
-    const fallback = state.dishes.filter(d => !avoid.has(d.id));
+
+    const bounds = getBounds();
+    const tar = state.targets || {};
+    const enforceCal = (Number(tar.cal)||0) > 0;
+    const enforceCarb = (Number(tar.carbs)||0) > 0;
+
+    const needMeetMinAtEnd = (emptySlotsBeforePick === 1);
+
+    function okProjected(proj){
+      if (enforceCal && proj.cal > bounds.calMax + 1e-9) return false;
+      if (enforceCarb && proj.carbs > bounds.carbMax + 1e-9) return false;
+
+      if (needMeetMinAtEnd){
+        if (enforceCal && proj.cal < bounds.calMin - 1e-9) return false;
+        if (enforceCarb && proj.carbs < bounds.carbMin - 1e-9) return false;
+      }
+      return true;
+    }
+
+    function filterPool(arr){
+      const out = [];
+      for (const d of arr){
+        if (avoid.has(d.id)) continue;
+        const proj = dayTotalsIfAddDish(dayObj, d);
+        if (!okProjected(proj)) continue;
+        out.push(d);
+      }
+      return out;
+    }
+
+    const primaryAll = dishesForMeal(meal);
+    const fallbackAll = state.dishes;
+
+    const primary = filterPool(primaryAll);
+    const fallback = filterPool(fallbackAll);
     const pool = primary.length ? primary : fallback;
 
     if (!pool.length) return null;
@@ -1800,7 +1915,8 @@
 
     let best=null, bestScore=Infinity;
     for (const d of pool){
-      const s = scoreAgainstTargets(dayTotalsIfAddDish(dayObj, d));
+      const proj = dayTotalsIfAddDish(dayObj, d);
+      const s = scoreAgainstTargets(proj);
       if (s < bestScore){ bestScore=s; best=d; }
     }
     return best?.id ?? null;
@@ -1825,7 +1941,6 @@
     renderWeek();
   }
 
-  // (kept as-is) Fill empty meals for a single day via menu (no cross-week rule here)
   function fillDayEmptySmart(plan, day){
     if (isDayLocked(plan, day)) return toast(`${day} is locked`, "warn");
     if (!state.dishes.length) return toast("Add dishes first", "warn");
@@ -1847,24 +1962,32 @@
       if (id) usedDay.add(id);
     }
 
-    let changed = false;
+    let placed = 0;
+    let failed = 0;
+
     for (const meal of MEALS){
       if (dayObj[meal]?.dishId) continue;
+
+      const emptiesBefore = remainingEmptySlots(dayObj);
       const pick = STRICT_NO_REPEATS
-        ? smartPickDishForMeal(dayObj, meal, usedDay, usedWeek, usedHistory)
-        : smartPickDishForMeal(dayObj, meal, usedDay, new Set(), new Set());
-      if (!pick) continue;
+        ? smartPickDishForMeal(dayObj, meal, usedDay, usedWeek, usedHistory, emptiesBefore)
+        : smartPickDishForMeal(dayObj, meal, usedDay, new Set(), new Set(), emptiesBefore);
+
+      if (!pick) { failed++; continue; }
 
       dayObj[meal] = { dishId: pick, servings: 1 };
       usedDay.add(pick);
       usedWeek.add(pick);
-      changed = true;
+      placed++;
     }
 
-    if (changed){
-      saveState(); renderWeek(); toast(`Filled empty meals for ${day}`);
+    saveState();
+    renderWeek();
+
+    if (failed > 0){
+      toast(`Filled ${placed} slot(s). ${failed} left empty (strict rules).`, "warn");
     } else {
-      toast(`No eligible dishes available for ${day}`, "warn");
+      toast(`Filled empty meals for ${day}`);
     }
   }
 
@@ -1873,7 +1996,7 @@
     if (!state.dishes.length) return toast("Add dishes first", "warn");
     if (!confirm(`Shuffle all meals for ${day}?`)) return;
 
-    // This remains "local-day" shuffle. Week-to-week no-repeat is enforced for Shuffle WEEK (below).
+    // Local-day shuffle only; does not apply tolerance rules (kept from earlier behavior).
     const used = new Set();
     for (const meal of MEALS){
       const primary = dishesForMeal(meal).filter(d => !used.has(d.id));
@@ -1915,8 +2038,6 @@
   }
 
   // ---------- Week actions ----------
-  // STRICT: fill only empty, never repeat in day/week, and avoid previous weeks.
-  // If it can't find eligible dishes, it leaves empties.
   function fillWeekOnlyEmptySmart(){
     const plan = ensureWeekPlan();
     if (!state.dishes.length) return toast("Add dishes first", "warn");
@@ -1949,9 +2070,10 @@
       for (const meal of MEALS){
         if (dayObj[meal]?.dishId) continue;
 
+        const emptiesBefore = remainingEmptySlots(dayObj);
         const pick = STRICT_NO_REPEATS
-          ? smartPickDishForMeal(dayObj, meal, usedDay, usedWeek, usedHistory)
-          : smartPickDishForMeal(dayObj, meal, usedDay, new Set(), new Set());
+          ? smartPickDishForMeal(dayObj, meal, usedDay, usedWeek, usedHistory, emptiesBefore)
+          : smartPickDishForMeal(dayObj, meal, usedDay, new Set(), new Set(), emptiesBefore);
 
         if (!pick) { failed++; continue; }
 
@@ -1966,16 +2088,12 @@
     renderWeek();
 
     if (failed > 0) {
-      toast(`Filled ${placed} slot(s). ${failed} left empty (no eligible dishes).`, "warn");
+      toast(`Filled ${placed} slot(s). ${failed} left empty (strict rules).`, "warn");
     } else {
-      toast("Filled empty meals (strict no repeats)");
+      toast("Filled empty meals (strict)");
     }
   }
 
-  // STRICT Shuffle Week:
-  // - Overwrites unlocked days
-  // - Uses strict no repeats across day/week and previous weeks
-  // - If it runs out, it leaves remaining slots empty
   function shuffleWeek(){
     const plan = ensureWeekPlan();
     if (!state.dishes.length) return toast("Add dishes first", "warn");
@@ -1983,8 +2101,7 @@
 
     const usedHistory = STRICT_NO_REPEATS ? getUsedDishIdsFromPreviousWeeks(weekStart, NO_REPEAT_WEEKS_BACK) : new Set();
 
-    // For strict shuffle, we consider the "week" as we build it.
-    // Start with ANY already-filled locked days counting as used (so we don't duplicate them).
+    // locked days count as already used (so we don't duplicate them)
     const usedWeek = new Set();
     for (const day of DAYS){
       const dayObj = plan[day];
@@ -2003,7 +2120,7 @@
     for (const day of DAYS){
       if (isDayLocked(plan, day)) continue;
 
-      // Clear the day first (since we're shuffling)
+      // Clear unlocked day
       plan[day].Breakfast = emptyMeal();
       plan[day].Lunch = emptyMeal();
       plan[day].Dinner = emptyMeal();
@@ -2011,9 +2128,10 @@
       const usedDay = new Set();
 
       for (const meal of MEALS){
+        const emptiesBefore = remainingEmptySlots(plan[day]); // will be 3, then 2, then 1
         const pick = STRICT_NO_REPEATS
-          ? smartPickDishForMeal(plan[day], meal, usedDay, usedWeek, usedHistory)
-          : smartPickDishForMeal(plan[day], meal, usedDay, new Set(), new Set());
+          ? smartPickDishForMeal(plan[day], meal, usedDay, usedWeek, usedHistory, emptiesBefore)
+          : smartPickDishForMeal(plan[day], meal, usedDay, new Set(), new Set(), emptiesBefore);
 
         if (!pick) { failed++; continue; }
         plan[day][meal] = { dishId: pick, servings: 1 };
@@ -2027,9 +2145,9 @@
     renderWeek();
 
     if (failed > 0) {
-      toast(`Shuffled. Set ${placed} slot(s). ${failed} left empty (no eligible dishes).`, "warn");
+      toast(`Shuffled. Set ${placed} slot(s). ${failed} left empty (strict rules).`, "warn");
     } else {
-      toast("Shuffled week (strict no repeats)");
+      toast("Shuffled week (strict)");
     }
   }
 
@@ -2097,7 +2215,7 @@
     URL.revokeObjectURL(url);
   }
 
-  // ---------- Ingredients toggle helpers (smooth animation) ----------
+  // ---------- Ingredients toggle helpers ----------
   function setIngPanelOpen(panelEl, open){
     if (!panelEl) return;
     if (open){
@@ -2115,10 +2233,15 @@
   // ---------- Render ----------
   function renderTargetsUI(){
     const tar = state.targets || {};
+    const tol = getTol();
     tCal.value = tar.cal ?? "";
     tProtein.value = tar.protein ?? "";
     tCarbs.value = tar.carbs ?? "";
     tFat.value = tar.fat ?? "";
+    tolCalUnder.value = tol.calUnderPct;
+    tolCalOver.value = tol.calOverPct;
+    tolCarbUnder.value = tol.carbsUnderPct;
+    tolCarbOver.value = tol.carbsOverPct;
   }
 
   function renderWeek(){
@@ -2520,7 +2643,7 @@
   });
 
   document.getElementById("reset").addEventListener("click", ()=>{
-    if (!confirm("Reset dishes, targets, and all saved plans on this device?")) return;
+    if (!confirm("Reset dishes, targets, tolerances, and all saved plans on this device?")) return;
     localStorage.removeItem(KEY);
     state = defaultState();
     weekStart = startOfWeek(new Date());
