@@ -690,6 +690,7 @@
             <button id="fillEmpty" class="smallBtn" type="button">Fill empty meals (smart)</button>
             <button id="shuffleWeek" class="smallBtn" type="button">Shuffle week</button>
             <button class="primary" id="copyPlan" type="button">Copy plan</button>
+            <button id="exportPDF" class="smallBtn" type="button" title="Print / Save as PDF">Export PDF</button>
             <button id="exportCSV" class="smallBtn" type="button">Export CSV</button>
             <button id="clearWeek" class="smallBtn danger" type="button" title="Clear all days in this week">Clear week</button>
           </div>
@@ -744,7 +745,7 @@
 (() => {
   const DAYS = ["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday","Sunday"];
   const MEALS = ["Breakfast","Lunch","Dinner"];
-  const KEY = "mealPlanner.macro.v20"; // bumped version
+  const KEY = "mealPlanner.macro.v21"; // bumped version for PDF export
   const THEME_KEY = "mealPlanner.theme";
   const KITCHEN_LABEL = "Kitchen";
 
@@ -802,8 +803,7 @@
   }
 
   function loadState() {
-    // migrate older keys forward
-    const tryKeys = [KEY, "mealPlanner.macro.v19", "mealPlanner.macro.v18", "mealPlanner.macro.v17", "mealPlanner.macro.v16", "mealPlanner.macro.v15"];
+    const tryKeys = [KEY, "mealPlanner.macro.v20", "mealPlanner.macro.v19", "mealPlanner.macro.v18", "mealPlanner.macro.v17", "mealPlanner.macro.v16", "mealPlanner.macro.v15"];
     for (const k of tryKeys) {
       const raw = localStorage.getItem(k);
       if (!raw) continue;
@@ -910,13 +910,13 @@
   function ensureWeekPlan(ws=weekStart){
     const key = toISO(ws);
     if (!state.planByWeekStart[key]) {
-      state.planByWeekStart[key] = Object.fromEntries(DAYS.map(d => [d, emptyDay()]));
+      state.planByWeekStart[key] = Object.fromEntries(["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday","Sunday"].map(d => [d, emptyDay()]));
       saveState();
     } else {
-      DAYS.forEach(day => {
+      ["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday","Sunday"].forEach(day => {
         if (!state.planByWeekStart[key][day]) state.planByWeekStart[key][day] = emptyDay();
         if (state.planByWeekStart[key][day]._locked == null) state.planByWeekStart[key][day]._locked = false;
-        MEALS.forEach(meal => {
+        ["Breakfast","Lunch","Dinner"].forEach(meal => {
           if (!state.planByWeekStart[key][day][meal]) state.planByWeekStart[key][day][meal] = emptyMeal();
         });
       });
@@ -1010,7 +1010,6 @@
     setTimeout(()=> el.style.opacity="0", 1900);
   }
 
-  // removes only blank lines; keeps other content.
   function normalizeName(s){
     const raw = String(s ?? "");
     const lines = raw.split(/\r?\n/).map(l => l.trim()).filter(l => l.length > 0);
@@ -1079,7 +1078,7 @@
   // ---------- Totals ----------
   function dayTotals(dayObj){
     let cal=0, protein=0, carbs=0, fat=0;
-    MEALS.forEach(meal => {
+    ["Breakfast","Lunch","Dinner"].forEach(meal => {
       const entry = dayObj[meal];
       if (!entry?.dishId) return;
       const d = getDish(entry.dishId);
@@ -1162,17 +1161,12 @@
   function isDishAllowedForMeal(dish, meal){
     if (!dish) return false;
     const cats = dish.categories || {};
-    // allow if explicitly true; (undefined treated as true for backwards compat)
     if (cats[meal] === false) return false;
     return true;
   }
-
-  // Manual override warning (tap + drag/drop)
   function confirmCategoryMismatchIfNeeded(dish, meal){
     if (!dish) return false;
     if (isDishAllowedForMeal(dish, meal)) return true;
-
-    // Warning but allow override
     return confirm(`“${dish.name}” isn’t tagged for ${meal}.\n\nAssign anyway?`);
   }
 
@@ -1787,7 +1781,6 @@
 
   // ---------- Smart fill helpers ----------
   function dishesForMeal(meal){
-    // ONLY dishes explicitly allowed for that meal
     return state.dishes.filter(d => isDishAllowedForMeal(d, meal) && !!d.categories?.[meal]);
   }
 
@@ -1856,11 +1849,6 @@
     return used;
   }
 
-  // STRICT picker:
-  // - CATEGORY STRICT: only picks dishes allowed for the specific meal (NO fallback to other categories)
-  // - no repeats (day/week/history)
-  // - does not allow exceeding Calories/Carbs MAX at any time
-  // - if this pick would COMPLETE the day (last empty slot), it must ALSO meet Calories/Carbs MIN
   function smartPickDishForMeal(dayObj, meal, usedDayIds, usedWeekIds, usedHistoryIds, emptySlotsBeforePick){
     const avoid = new Set([...usedDayIds, ...usedWeekIds, ...usedHistoryIds]);
     const bounds = getBounds();
@@ -1880,7 +1868,7 @@
       return true;
     }
 
-    const poolAll = dishesForMeal(meal); // strict category pool
+    const poolAll = dishesForMeal(meal);
     const pool = [];
     for (const d of poolAll){
       if (avoid.has(d.id)) continue;
@@ -1889,7 +1877,6 @@
       pool.push(d);
     }
 
-    // If no eligible dishes for that meal, leave empty (do NOT use wrong category)
     if (!pool.length) return null;
 
     if (!hasTargets()){
@@ -1907,12 +1894,6 @@
 
   // ---------- Day menu actions ----------
   function isDayLocked(plan, day){ return !!plan[day]._locked; }
-  function toggleDayLock(plan, day){
-    plan[day]._locked = !plan[day]._locked;
-    saveState();
-    renderWeek();
-    toast(plan[day]._locked ? `${day} locked` : `${day} unlocked`);
-  }
 
   function clearDay(plan, day){
     if (isDayLocked(plan, day)) return toast(`${day} is locked`, "warn");
@@ -1968,54 +1949,10 @@
     renderWeek();
 
     if (failed > 0){
-      toast(`Filled ${placed} slot(s). ${failed} left empty (no eligible ${failed===1?"dish":"dishes"} for category/tolerance).`, "warn");
+      toast(`Filled ${placed} slot(s). ${failed} left empty (no eligible dishes for category/tolerance).`, "warn");
     } else {
       toast(`Filled empty meals for ${day}`);
     }
-  }
-
-  // (Optional) keep shuffle-day category safe too (so it can’t create category mismatches)
-  function shuffleDay(plan, day){
-    if (isDayLocked(plan, day)) return toast(`${day} is locked`, "warn");
-    if (!state.dishes.length) return toast("Add dishes first", "warn");
-    if (!confirm(`Shuffle all meals for ${day}?`)) return;
-
-    const used = new Set();
-    for (const meal of MEALS){
-      const pool = dishesForMeal(meal).filter(d => !used.has(d.id));
-      if (!pool.length) continue;
-      const pick = pool[Math.floor(Math.random()*pool.length)];
-      plan[day][meal] = { dishId: pick.id, servings: 1 };
-      used.add(pick.id);
-    }
-    saveState();
-    renderWeek();
-    toast(`Shuffled ${day}`);
-  }
-
-  function copyDay(plan, day){
-    const payload = {
-      locked: !!plan[day]._locked,
-      meals: Object.fromEntries(MEALS.map(m => [m, { dishId: plan[day][m]?.dishId || null }]))
-    };
-    state.ui.dayClipboard = payload;
-    saveState();
-    toast(`${day} copied`);
-  }
-
-  function pasteDay(plan, day){
-    if (isDayLocked(plan, day)) return toast(`${day} is locked`, "warn");
-    const clip = state.ui.dayClipboard;
-    if (!clip) return toast("Nothing copied yet", "warn");
-    if (!confirm(`Paste copied day into ${day}? This will overwrite meals.`)) return;
-
-    for (const meal of MEALS){
-      const dishId = clip.meals?.[meal]?.dishId || null;
-      plan[day][meal] = { dishId, servings: 1 };
-    }
-    saveState();
-    renderWeek();
-    toast(`Pasted into ${day}`);
   }
 
   // ---------- Week actions ----------
@@ -2080,11 +2017,10 @@
     if (!confirm("Shuffle week? This overwrites all unlocked days.")) return;
 
     const usedHistory = STRICT_NO_REPEATS ? getUsedDishIdsFromPreviousWeeks(weekStart, NO_REPEAT_WEEKS_BACK) : new Set();
-
     const usedWeek = new Set();
+
     for (const day of DAYS){
       const dayObj = plan[day];
-      if (!dayObj) continue;
       if (isDayLocked(plan, day)) {
         for (const meal of MEALS){
           const id = dayObj[meal]?.dishId;
@@ -2193,6 +2129,265 @@
     URL.revokeObjectURL(url);
   }
 
+  // ---------- NEW: Export PDF (print A4) ----------
+  function exportWeekPDF(){
+    const plan = ensureWeekPlan();
+    const tar = state.targets || { cal:0, protein:0, carbs:0, fat:0 };
+    const tol = getTol();
+    const range = fmtRange(weekStart);
+
+    const safe = (s) => String(s ?? "").replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+    const locationName = (state.weather?.locationName || "").trim();
+    const showWx = !!state.weather?.enabled;
+
+    const daysHTML = DAYS.map((day, idx) => {
+      const dateObj = addDays(weekStart, idx);
+      const dayObj = plan[day];
+      const tot = dayTotals(dayObj);
+
+      const w = getWeatherForDate(dateObj);
+      const wxText = (showWx && w)
+        ? `${weatherEmoji(w.code)} ${Math.round(w.tmax)}°/${Math.round(w.tmin)}°C`
+        : "";
+
+      const mealRows = MEALS.map(meal => {
+        const e = dayObj[meal];
+        const d = e?.dishId ? getDish(e.dishId) : null;
+        const name = d ? d.name : "";
+        const loc = d ? dishLocation(d) : "";
+        const kcal = d ? (Number(d.cal)||0) : 0;
+        const p = d ? (Number(d.protein)||0) : 0;
+        const c = d ? (Number(d.carbs)||0) : 0;
+        const f = d ? (Number(d.fat)||0) : 0;
+
+        return `
+          <tr>
+            <td class="colMeal">${safe(meal)}</td>
+            <td class="colDish">
+              <div class="dishName">${safe(name || "—")}</div>
+              ${loc ? `<div class="dishLoc">${safe(loc)}</div>` : ``}
+            </td>
+            <td class="colNums">${Math.round(kcal)}</td>
+            <td class="colNums">${Math.round(p)}</td>
+            <td class="colNums">${Math.round(c)}</td>
+            <td class="colNums">${Math.round(f)}</td>
+          </tr>
+        `;
+      }).join("");
+
+      return `
+        <section class="dayBlock">
+          <div class="dayHeader">
+            <div>
+              <div class="dayTitle">${safe(day)} <span class="date">${safe(formatDate(dateObj))}</span></div>
+              ${wxText ? `<div class="wx">${safe(wxText)}${locationName ? ` • ${safe(locationName)}` : ""}</div>` : ``}
+            </div>
+            <div class="totals">
+              <div><span class="lbl">Total:</span> <b>${Math.round(tot.cal)}</b> kcal</div>
+              <div class="sub">${Math.round(tot.protein)}P • ${Math.round(tot.carbs)}C • ${Math.round(tot.fat)}F</div>
+            </div>
+          </div>
+
+          <table class="mealTable">
+            <thead>
+              <tr>
+                <th class="colMeal">Meal</th>
+                <th>Dish</th>
+                <th class="colNums">kcal</th>
+                <th class="colNums">P</th>
+                <th class="colNums">C</th>
+                <th class="colNums">F</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${mealRows}
+            </tbody>
+          </table>
+        </section>
+      `;
+    }).join("");
+
+    const html = `
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8"/>
+  <title>Meal Plan — ${safe(range)}</title>
+  <style>
+    @page { size: A4; margin: 12mm; }
+    * { box-sizing: border-box; }
+    body {
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial;
+      color: #111827;
+      margin: 0;
+    }
+    .pageHeader{
+      display:flex;
+      justify-content:space-between;
+      align-items:flex-start;
+      gap:12px;
+      padding-bottom:10px;
+      border-bottom: 2px solid #e5e7eb;
+      margin-bottom: 12px;
+    }
+    .title{
+      font-size: 18px;
+      font-weight: 900;
+      margin:0;
+    }
+    .range{
+      margin-top:4px;
+      color:#374151;
+      font-size: 12px;
+    }
+    .meta{
+      text-align:right;
+      font-size: 12px;
+      color:#374151;
+      line-height:1.35;
+      white-space:nowrap;
+    }
+    .pillRow{
+      margin-top:6px;
+      display:flex;
+      flex-wrap:wrap;
+      gap:6px;
+      justify-content:flex-end;
+    }
+    .pill{
+      border:1px solid #e5e7eb;
+      border-radius:999px;
+      padding:3px 8px;
+      font-size:11px;
+      color:#374151;
+      background:#f9fafb;
+    }
+
+    .grid{
+      display:grid;
+      grid-template-columns: 1fr;
+      gap: 10px;
+    }
+    .dayBlock{
+      border:1px solid #e5e7eb;
+      border-radius: 10px;
+      padding: 10px;
+      page-break-inside: avoid;
+    }
+    .dayHeader{
+      display:flex;
+      justify-content:space-between;
+      gap:12px;
+      align-items:flex-start;
+      margin-bottom:8px;
+    }
+    .dayTitle{
+      font-weight:900;
+      font-size:14px;
+    }
+    .date{
+      font-weight:600;
+      color:#6b7280;
+      margin-left:8px;
+      font-size:12px;
+    }
+    .wx{
+      margin-top:2px;
+      font-size:11px;
+      color:#6b7280;
+    }
+    .totals{
+      text-align:right;
+      font-size:12px;
+    }
+    .totals .lbl{ color:#6b7280; font-weight:600; }
+    .totals .sub{ color:#6b7280; font-size:11px; margin-top:2px; }
+
+    table{
+      width:100%;
+      border-collapse: collapse;
+      font-size: 12px;
+    }
+    th, td{
+      border-top: 1px solid #e5e7eb;
+      padding: 6px 6px;
+      vertical-align: top;
+    }
+    thead th{
+      border-top:none;
+      text-align:left;
+      color:#374151;
+      font-size:11px;
+      letter-spacing:.02em;
+      text-transform: uppercase;
+    }
+    .colMeal{ width: 20%; color:#374151; font-weight:700; }
+    .colNums{ width: 8%; text-align:right; white-space:nowrap; }
+    .dishName{ font-weight:800; }
+    .dishLoc{ font-style:italic; color:#6b7280; font-size:11px; margin-top:2px; }
+
+    .footer{
+      margin-top: 10px;
+      font-size: 10px;
+      color:#6b7280;
+      display:flex;
+      justify-content:space-between;
+      gap:12px;
+      border-top:1px solid #e5e7eb;
+      padding-top:8px;
+    }
+
+    /* Print niceties */
+    @media print{
+      a { color: inherit; text-decoration: none; }
+    }
+  </style>
+</head>
+<body>
+  <div class="pageHeader">
+    <div>
+      <div class="title">Meal Plan</div>
+      <div class="range">${safe(range)}</div>
+    </div>
+    <div class="meta">
+      <div><b>Targets</b>: ${Math.round(tar.cal||0)} kcal • ${Math.round(tar.protein||0)}P • ${Math.round(tar.carbs||0)}C • ${Math.round(tar.fat||0)}F</div>
+      <div>Tolerance (kcal): -${tol.calUnderPct}% / +${tol.calOverPct}%</div>
+      <div>Tolerance (carbs): -${tol.carbsUnderPct}% / +${tol.carbsOverPct}%</div>
+      <div class="pillRow">
+        <span class="pill">Breakfast • Lunch • Dinner</span>
+        <span class="pill">Print A4</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="grid">
+    ${daysHTML}
+  </div>
+
+  <div class="footer">
+    <div>Generated: ${safe(new Date().toLocaleString())}</div>
+    <div>Tip: In print dialog choose “Save as PDF”.</div>
+  </div>
+
+  <script>
+    window.onload = () => {
+      // Give layout a tick, then open print dialog
+      setTimeout(() => window.print(), 200);
+    };
+  </script>
+</body>
+</html>`;
+
+    const w = window.open("", "_blank");
+    if (!w) {
+      toast("Popup blocked — allow popups for this site.", "warn");
+      return;
+    }
+    w.document.open();
+    w.document.write(html);
+    w.document.close();
+  }
+
   // ---------- Ingredients toggle helpers ----------
   function setIngPanelOpen(panelEl, open){
     if (!panelEl) return;
@@ -2268,26 +2463,8 @@
                 </button>
 
                 <div class="menuPanel" data-menu="1" role="menu" aria-label="Day actions">
-                  <button class="menuItem" type="button" data-action="copy" role="menuitem">
-                    <span class="menuIcon">📋</span><span>Copy day</span>
-                  </button>
-                  <button class="menuItem ${state.ui.dayClipboard ? "" : "disabled"}" type="button" data-action="paste" role="menuitem" ${state.ui.dayClipboard ? "" : "aria-disabled='true'"}>
-                    <span class="menuIcon">📥</span><span>Paste day</span>
-                  </button>
-
-                  <div class="menuDivider"></div>
-
                   <button class="menuItem ${locked ? "disabled" : ""}" type="button" data-action="fill" role="menuitem" ${locked ? "aria-disabled='true'" : ""}>
                     <span class="menuIcon">✨</span><span>Fill empty meals</span>
-                  </button>
-                  <button class="menuItem ${locked ? "disabled" : ""}" type="button" data-action="shuffle" role="menuitem" ${locked ? "aria-disabled='true'" : ""}>
-                    <span class="menuIcon">🔀</span><span>Shuffle day</span>
-                  </button>
-
-                  <div class="menuDivider"></div>
-
-                  <button class="menuItem" type="button" data-action="lock" role="menuitem">
-                    <span class="menuIcon">${locked ? "🔓" : "🔒"}</span><span>${locked ? "Unlock day" : "Lock day"}</span>
                   </button>
 
                   <div class="menuDivider"></div>
@@ -2356,11 +2533,7 @@
           const action = btn.dataset.action;
 
           const plan = ensureWeekPlan();
-          if (action === "copy") return copyDay(plan, day);
-          if (action === "paste") return pasteDay(plan, day);
           if (action === "fill") return fillDayEmptySmart(plan, day);
-          if (action === "shuffle") return shuffleDay(plan, day);
-          if (action === "lock") return toggleDayLock(plan, day);
           if (action === "clear") return clearDay(plan, day);
         });
       });
@@ -2607,6 +2780,7 @@
   document.getElementById("shuffleWeek").addEventListener("click", shuffleWeek);
   document.getElementById("copyPlan").addEventListener("click", copyPlan);
   document.getElementById("exportCSV").addEventListener("click", exportWeekCSV);
+  document.getElementById("exportPDF").addEventListener("click", exportWeekPDF);
 
   document.getElementById("prevWeek").addEventListener("click", async ()=>{ weekStart = addDays(weekStart,-7); await fetchWeatherForWeek(); renderAll(); });
   document.getElementById("nextWeek").addEventListener("click", async ()=>{ weekStart = addDays(weekStart, 7); await fetchWeatherForWeek(); renderAll(); });
