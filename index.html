@@ -611,7 +611,7 @@
             <div>
               <label class="muted" for="dishIngredients" style="display:block;margin-bottom:6px;">Ingredients (one per line)</label>
               <textarea id="dishIngredients" placeholder="e.g.&#10;chicken breast&#10;rice&#10;broccoli" style="min-height:92px;"></textarea>
-              <div class="inlineNote">Tip: for CSV import/export, ingredients use <b>|</b> between items.</div>
+              <div class="inlineNote">Tip: for CSV import/export, ingredients use <b>|</b> between items (but file import supports multiline too).</div>
             </div>
 
             <div class="checkRow">
@@ -633,7 +633,7 @@
               <span class="muted">or paste below:</span>
             </div>
 
-            <textarea id="bulk" placeholder="Example: Pasta bake,650,25,80,18,Everyday Meals,45,0,1,1,chicken|pasta|tomato sauce" style="width:100%; min-height:96px;"></textarea>
+            <textarea id="bulk" placeholder='Example: Pasta bake,650,25,80,18,Everyday Meals,45,0,1,1,"chicken|pasta|tomato sauce"' style="width:100%; min-height:96px;"></textarea>
             <div class="row" style="justify-content:space-between; flex-wrap:wrap;">
               <span class="muted">Format: name, cal, protein, carbs, fat, book, page, b, l, d, ingredients</span>
               <button id="importBulk" class="smallBtn" type="button">Import</button>
@@ -720,7 +720,7 @@
 (() => {
   const DAYS = ["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday","Sunday"];
   const MEALS = ["Breakfast","Lunch","Dinner"];
-  const KEY = "mealPlanner.macro.v16";
+  const KEY = "mealPlanner.macro.v17";
   const THEME_KEY = "mealPlanner.theme";
   const KITCHEN_LABEL = "Kitchen";
 
@@ -778,7 +778,7 @@
   }
 
   function loadState() {
-    const tryKeys = [KEY, "mealPlanner.macro.v15", "mealPlanner.macro.v14", "mealPlanner.macro.v13", "mealPlanner.macro.v12", "mealPlanner.macro.v11", "mealPlanner.macro.v10", "mealPlanner.macro.v9"];
+    const tryKeys = [KEY, "mealPlanner.macro.v16", "mealPlanner.macro.v15", "mealPlanner.macro.v14", "mealPlanner.macro.v13", "mealPlanner.macro.v12", "mealPlanner.macro.v11", "mealPlanner.macro.v10", "mealPlanner.macro.v9"];
     for (const k of tryKeys) {
       const raw = localStorage.getItem(k);
       if (!raw) continue;
@@ -981,7 +981,14 @@
     setTimeout(()=> el.style.opacity="0", 1700);
   }
 
-  function normalizeName(s){ return (s||"").trim().replace(/\s+/g," "); }
+  // IMPORTANT: This removes only blank lines (and trims each line), but keeps punctuation + wording.
+  // Multiline titles become a single line with spaces between non-empty lines.
+  function normalizeName(s){
+    const raw = String(s ?? "");
+    const lines = raw.split(/\r?\n/).map(l => l.trim()).filter(l => l.length > 0);
+    return lines.join(" ").replace(/\s{2,}/g, " ").trim();
+  }
+
   function getDish(id){ return state.dishes.find(d => d.id === id) || null; }
 
   function dishLocation(d){
@@ -1001,8 +1008,10 @@
 
   function parseIngredientsFromText(text){
     const raw = String(text || "");
-    const lines = raw.split("\n").map(x=>x.trim()).filter(Boolean);
+    // If multiline, treat each line as an item (trim + drop blanks)
+    const lines = raw.split(/\r?\n/).map(x=>x.trim()).filter(Boolean);
     if (lines.length > 1) return lines;
+
     const one = raw.trim();
     if (!one) return [];
     if (one.includes("|")) return one.split("|").map(x=>x.trim()).filter(Boolean);
@@ -1362,7 +1371,6 @@
 
     if (state.ui.selectedDishId === id) state.ui.selectedDishId = null;
 
-    // clean up expandedIngredients state too
     if (state.ui.expandedIngredients && state.ui.expandedIngredients[id] != null) {
       delete state.ui.expandedIngredients[id];
     }
@@ -1380,18 +1388,75 @@
     return ["1","true","yes","y","t"].includes(s);
   }
 
-  function parseCSVLineSimple(line){
+  // ---------- Robust CSV parsing (supports quoted multiline fields) ----------
+  function detectDelimiterFromHeader(text){
+    const firstLine = (text || "").split(/\r?\n/)[0] || "";
+    const candidates = [",",";","\t"];
+    let best = ",", bestCount = -1;
+    for (const d of candidates){
+      const rx = d === "\t" ? /\t/g : new RegExp("\\" + d, "g");
+      const count = (firstLine.match(rx) || []).length;
+      if (count > bestCount){ bestCount = count; best = d; }
+    }
+    return best;
+  }
+
+  function parseCSVText(text, delimiter){
+    const rows = [];
+    let row = [];
+    let field = "";
+    let inQuotes = false;
+
+    text = (text || "").replace(/^\uFEFF/, "");
+
+    for (let i = 0; i < text.length; i++){
+      const ch = text[i];
+      const next = text[i+1];
+
+      if (ch === '"'){
+        if (inQuotes && next === '"'){ field += '"'; i++; }
+        else { inQuotes = !inQuotes; }
+        continue;
+      }
+
+      if (!inQuotes && ch === delimiter){
+        row.push(field);
+        field = "";
+        continue;
+      }
+
+      if (!inQuotes && (ch === "\n" || ch === "\r")){
+        if (ch === "\r" && next === "\n") i++;
+        row.push(field);
+        field = "";
+        if (!(row.length === 1 && row[0].trim() === "")) rows.push(row);
+        row = [];
+        continue;
+      }
+
+      field += ch;
+    }
+
+    row.push(field);
+    if (!(row.length === 1 && row[0].trim() === "")) rows.push(row);
+    return rows;
+  }
+
+  // Simple line parser for "bulk textarea" (no multiline rows expected there)
+  function parseCSVLine(line, delimiter){
     const out = [];
     let cur = "";
     let inQuotes = false;
+
     for (let i=0;i<line.length;i++){
       const ch = line[i];
+      const next = line[i+1];
       if (ch === '"'){
-        if (inQuotes && line[i+1] === '"'){ cur += '"'; i++; }
+        if (inQuotes && next === '"'){ cur += '"'; i++; }
         else inQuotes = !inQuotes;
         continue;
       }
-      if (ch === "," && !inQuotes){
+      if (ch === delimiter && !inQuotes){
         out.push(cur.trim());
         cur = "";
         continue;
@@ -1402,37 +1467,60 @@
     return out;
   }
 
-  function importLinesAsDishes(lines){
-    let added=0, skipped=0;
+  function importRowsAsDishes(rows){
+    let added = 0, skipped = 0;
+    if (!rows || rows.length === 0) return toast("No usable rows found", "warn");
 
-    for (const line of lines) {
-      const trimmed = line.trim();
-      if (!trimmed) continue;
+    const first = rows[0].map(x => String(x ?? "").trim());
+    const lower = first.map(x => x.toLowerCase());
 
-      const parts = parseCSVLineSimple(trimmed).map(p=>p.trim());
-      if (parts.length < 5) { skipped++; continue; }
+    const looksLikeHeader =
+      lower.includes("name") &&
+      (lower.includes("cal") || lower.includes("calories")) &&
+      (lower.includes("protein") || lower.includes("protein_g"));
 
-      if (added === 0 && skipped === 0) {
-        const h = parts.map(x=>x.toLowerCase());
-        if (h.includes("name") && (h.includes("cal") || h.includes("calories"))) {
-          skipped++;
-          continue;
-        }
+    let headerMap = null;
+    if (looksLikeHeader){
+      headerMap = {};
+      lower.forEach((h, i) => headerMap[h] = i);
+    }
+
+    function get(parts, ...keys){
+      if (!headerMap) return null;
+      for (const k of keys){
+        if (headerMap[k] != null) return parts[headerMap[k]];
       }
+      return null;
+    }
 
-      const name = normalizeName(parts[0]);
+    const startIndex = headerMap ? 1 : 0;
+
+    for (let r = startIndex; r < rows.length; r++){
+      const parts = rows[r].map(v => String(v ?? "").trim());
+      if (!parts.length) { skipped++; continue; }
+
+      if (!headerMap && parts.length < 5) { skipped++; continue; }
+
+      const nameRaw = headerMap ? (get(parts, "name") ?? "") : (parts[0] ?? "");
+      const name = normalizeName(nameRaw);
       if (!name) { skipped++; continue; }
 
-      const cal = Number(parts[1]) || 0;
-      const protein = Number(parts[2]) || 0;
-      const carbs = Number(parts[3]) || 0;
-      const fat = Number(parts[4]) || 0;
+      const cal = Number(headerMap ? (get(parts,"cal","calories") ?? 0) : (parts[1] ?? 0)) || 0;
+      const protein = Number(headerMap ? (get(parts,"protein","protein_g") ?? 0) : (parts[2] ?? 0)) || 0;
+      const carbs = Number(headerMap ? (get(parts,"carbs","carbs_g","carbohydrates") ?? 0) : (parts[3] ?? 0)) || 0;
+      const fat = Number(headerMap ? (get(parts,"fat","fat_g") ?? 0) : (parts[4] ?? 0)) || 0;
 
-      const book = parts[5] || "";
-      const page = parts[6] ? Number(parts[6]) : null;
+      const book = headerMap ? (get(parts,"book","recipe_book") ?? "") : (parts[5] ?? "");
+      const pageRaw = headerMap ? (get(parts,"page") ?? "") : (parts[6] ?? "");
+      const page = pageRaw === "" ? null : (Number(pageRaw) || null);
 
       let categories = { Breakfast:true, Lunch:true, Dinner:true };
-      if (parts.length >= 10) {
+      if (headerMap){
+        const b = parseBoolLike(get(parts,"breakfast") ?? "");
+        const l = parseBoolLike(get(parts,"lunch") ?? "");
+        const d = parseBoolLike(get(parts,"dinner") ?? "");
+        if (b || l || d) categories = { Breakfast:b, Lunch:l, Dinner:d };
+      } else if (parts.length >= 10) {
         categories = {
           Breakfast: parseBoolLike(parts[7]),
           Lunch: parseBoolLike(parts[8]),
@@ -1443,13 +1531,19 @@
         }
       }
 
-      let ingredients = [];
-      if (parts.length >= 11) {
-        ingredients = parseIngredientsFromText(parts[10]);
-      }
+      const ingRaw = headerMap ? (get(parts,"ingredients") ?? "") : (parts[10] ?? "");
+      const ingredients = parseIngredientsFromText(ingRaw);
 
-      if (state.dishes.some(d=>d.name.toLowerCase()===name.toLowerCase())) { skipped++; continue; }
-      state.dishes.push({ id: crypto.randomUUID(), name, cal, protein, carbs, fat, book, page, ingredients, categories });
+      if (state.dishes.some(d => d.name.toLowerCase() === name.toLowerCase())) { skipped++; continue; }
+
+      state.dishes.push({
+        id: crypto.randomUUID(),
+        name, cal, protein, carbs, fat,
+        book: (book || "").trim(),
+        page,
+        ingredients,
+        categories
+      });
       added++;
     }
 
@@ -1459,20 +1553,35 @@
     toast(`Imported ${added}, skipped ${skipped}`);
   }
 
-  function importBulkCSV(){
-    const text = elBulk.value || "";
-    const lines = text.split("\n").map(l=>l.trim()).filter(Boolean);
-    if (lines.length === 0) return toast("No lines", "warn");
-    importLinesAsDishes(lines);
-    elBulk.value = "";
-  }
-
   async function importCsvFromFile(file){
     if (!file) return toast("Choose a CSV file first", "warn");
     const text = await file.text();
-    const lines = text.split(/\r?\n/).map(l=>l.trim()).filter(Boolean);
-    if (!lines.length) return toast("CSV was empty", "warn");
+    const delimiter = detectDelimiterFromHeader(text);
+    const rows = parseCSVText(text, delimiter);
+    if (!rows.length) return toast("CSV was empty", "warn");
+    importRowsAsDishes(rows);
+  }
+
+  function importLinesAsDishes(lines){
+    // For pasted bulk, treat each line as a row; still allow , ; or tab
+    const firstNonEmpty = (lines || []).find(l => (l || "").trim());
+    if (!firstNonEmpty) return toast("No usable rows found", "warn");
+    const delim = detectDelimiterFromHeader(firstNonEmpty);
+
+    const rows = [];
+    for (const line of lines){
+      const raw = (line || "").trim();
+      if (!raw) continue;
+      rows.push(parseCSVLine(raw, delim));
+    }
+    importRowsAsDishes(rows);
+  }
+
+  function importBulkCSV(){
+    const text = elBulk.value || "";
+    const lines = text.split(/\r?\n/);
     importLinesAsDishes(lines);
+    elBulk.value = "";
   }
 
   // ---------- JSON Export / Import ----------
@@ -2095,7 +2204,7 @@
     });
   }
 
-  // ---------- Kitchen list render (ingredients hidden + list icon toggle only when ingredients exist) ----------
+  // ---------- Kitchen list render (ingredients hidden + list icon toggle only when ingredients exist; no "no ingredients" message) ----------
   function renderDishList(){
     const list = filteredDishes(elSearch.value);
     elDishList.innerHTML = "";
@@ -2119,7 +2228,6 @@
       const hasIngredients = !!ingText;
       const expanded = hasIngredients ? !!state.ui.expandedIngredients[d.id] : false;
 
-      // If no ingredients, ensure we don't keep stale "expanded" state
       if (!hasIngredients && state.ui.expandedIngredients[d.id]) {
         delete state.ui.expandedIngredients[d.id];
         saveState();
