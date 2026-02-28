@@ -2695,7 +2695,6 @@ window.onload = function(){
   document.getElementById("fillEmpty").addEventListener("click", fillWeekOnlyEmptySmart);
   document.getElementById("shuffleWeek").addEventListener("click", shuffleWeek);
   document.getElementById("copyPlan").addEventListener("click", copyPlan);
-  document.getElementById("exportCSV").addEventListener("click", exportWeekCSV);
   document.getElementById("exportPDF").addEventListener("click", exportWeekPDF);
 
   document.getElementById("prevWeek").addEventListener("click", async ()=>{ weekStart = addDays(weekStart,-7); await fetchWeatherForWeek(); renderAll(); });
