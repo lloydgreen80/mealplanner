@@ -102,6 +102,7 @@
     }
     input::placeholder, textarea::placeholder{ color: color-mix(in srgb, var(--muted) 80%, transparent 20%); }
     input[type=number]{ max-width:140px; }
+    textarea{ width:100%; }
     button{ cursor:pointer; }
     button.primary{
       background: linear-gradient(135deg,var(--good1),var(--good2));
@@ -159,33 +160,13 @@
       outline-offset:2px;
     }
 
-    /* Day header layout: totals inline on top row (right of kebab) */
-    .dayHeader{
-      display:flex;
-      flex-direction:column;
-      gap:8px;
-    }
-    .dayTopRow{
-      display:flex;
-      justify-content:space-between;
-      align-items:flex-start;
-      gap:12px;
-    }
-    .dayLeft{
-      display:flex;
-      flex-direction:column;
-      gap:4px;
-      min-width:0;
-    }
+    .dayHeader{ display:flex; flex-direction:column; gap:8px; }
+    .dayTopRow{ display:flex; justify-content:space-between; align-items:flex-start; gap:12px; }
+    .dayLeft{ display:flex; flex-direction:column; gap:4px; min-width:0; }
     .dayLeft strong{ font-size:14px; }
     .dayLeft .micro{ display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
 
-    .dayRight{
-      display:flex;
-      align-items:flex-start;
-      gap:10px;
-      flex-shrink:0;
-    }
+    .dayRight{ display:flex; align-items:flex-start; gap:10px; flex-shrink:0; }
     .dayTotalsInline{
       text-align:right;
       display:flex;
@@ -200,26 +181,14 @@
       line-height:1.1;
     }
 
-    /* Macro bars: 1x4 */
     .progressWrap{
       margin-top:4px;
       display:grid;
       grid-template-columns: repeat(4, minmax(0, 1fr));
       gap:8px;
     }
-    .progItem{
-      display:grid;
-      grid-template-columns: 1fr;
-      gap:6px;
-      align-items:center;
-      min-width:0;
-    }
-    .progLabel{
-      font-size:11px;
-      color:var(--muted);
-      line-height:1;
-      text-align:center;
-    }
+    .progItem{ display:grid; gap:6px; align-items:center; min-width:0; }
+    .progLabel{ font-size:11px; color:var(--muted); line-height:1; text-align:center; }
     .bar{
       width:100%;
       height:10px;
@@ -228,12 +197,7 @@
       border:1px solid color-mix(in srgb, var(--muted) 28%, var(--border) 72%);
       background: color-mix(in srgb, var(--muted) 14%, var(--card) 86%);
     }
-    .fill{
-      height:100%;
-      display:block;
-      width:0%;
-      border-radius:999px;
-    }
+    .fill{ height:100%; display:block; width:0%; border-radius:999px; }
     .fill.green{ background: linear-gradient(135deg,var(--good1),var(--good2)); }
     .fill.amber{ background: linear-gradient(135deg,var(--warn1),var(--warn2)); }
     .fill.red{ background: linear-gradient(135deg,var(--bad1),var(--bad2)); }
@@ -256,10 +220,7 @@
     .mealRow:active{ cursor: grabbing; }
 
     @media (max-width:640px){
-      .mealRow{
-        grid-template-columns: 98px 1fr auto;
-        grid-auto-rows:auto;
-      }
+      .mealRow{ grid-template-columns: 98px 1fr auto; grid-auto-rows:auto; }
       .mealRow .mealMacros{ grid-column: 2 / 3; justify-self:start; }
       .mealRow .mealBtn{ grid-column: 3 / 4; justify-self:end; }
     }
@@ -269,7 +230,6 @@
     .dishLoc{ font-size:12px; font-style:italic; color:var(--muted); line-height:1.2; }
     .dishEmpty{ color: color-mix(in srgb, var(--muted) 85%, transparent 15%); font-weight:600; }
 
-    /* Only the dish list scrolls */
     .list{
       display:flex; flex-direction:column; gap:8px;
       overflow:auto;
@@ -311,7 +271,6 @@
       padding-top:2px;
     }
 
-    /* Icon buttons (used across page) */
     .miniIcon{
       width:30px; height:30px;
       display:inline-flex; align-items:center; justify-content:center;
@@ -323,9 +282,29 @@
       line-height:1;
       font-size:14px;
     }
+    .miniIcon svg{ width:16px; height:16px; stroke: currentColor; }
     .miniIcon.danger{
       border-color: color-mix(in srgb, var(--bad2) 35%, var(--border) 65%);
       color: color-mix(in srgb, var(--bad2) 70%, var(--text) 30%);
+    }
+
+    /* Ingredients collapsible panel (only renders when ingredients exist) */
+    .ingPanel{
+      margin-top:6px;
+      border-left: 2px solid color-mix(in srgb, var(--accent2) 35%, var(--border) 65%);
+      padding-left:10px;
+      overflow:hidden;
+      max-height: 0px;
+      opacity: 0;
+      transition: max-height .22s ease, opacity .18s ease;
+      will-change: max-height, opacity;
+    }
+    .ingPanel.open{ opacity: 1; }
+    .ingPanel em{
+      font-style: italic;
+      color: var(--muted);
+      font-size: 12.5px;
+      line-height: 1.35;
     }
 
     .assignBar{
@@ -370,7 +349,6 @@
       font-size:12px;
     }
 
-    /* Weather pill in day header */
     .weatherPill{
       display:inline-flex;
       align-items:center;
@@ -384,7 +362,6 @@
     .weatherIcon{ font-size:14px; }
     .weatherTemp{ font-size:12px; color:var(--muted); }
 
-    /* Mobile kitchen collapse bar */
     .mobilePantryBar{
       display:none;
       position: sticky;
@@ -402,7 +379,6 @@
       .pantryCollapsed .grid{ grid-template-columns: 1fr; }
     }
 
-    /* --- Day kebab menu --- */
     .dayMenu{
       position:relative;
       display:flex;
@@ -501,6 +477,23 @@
     .dlgHeader h3{ margin:0; font-size:14px; }
     .dlgFooter{ display:flex; justify-content:flex-end; gap:10px; margin-top:12px; }
     .toastWarn { border-color: color-mix(in srgb, var(--warn2) 40%, var(--border) 60%) !important; }
+
+    .fileRow{
+      display:flex;
+      gap:10px;
+      align-items:center;
+      flex-wrap:wrap;
+    }
+    .fileRow input[type="file"]{
+      padding:6px 8px;
+      border-radius:10px;
+      max-width:100%;
+    }
+    .inlineNote{
+      font-size:12px;
+      color:var(--muted);
+      line-height:1.35;
+    }
   </style>
 </head>
 
@@ -615,6 +608,12 @@
               <input id="dishPage" placeholder="Page" type="number" style="width:96px;" min="1" />
             </div>
 
+            <div>
+              <label class="muted" for="dishIngredients" style="display:block;margin-bottom:6px;">Ingredients (one per line)</label>
+              <textarea id="dishIngredients" placeholder="e.g.&#10;chicken breast&#10;rice&#10;broccoli" style="min-height:92px;"></textarea>
+              <div class="inlineNote">Tip: for CSV import/export, ingredients use <b>|</b> between items.</div>
+            </div>
+
             <div class="checkRow">
               <span class="muted">Categories:</span>
               <label><input type="checkbox" id="catBreakfast"> Breakfast</label>
@@ -624,14 +623,31 @@
             </div>
 
             <div class="muted">
-              Import format:
-              <b>name, cal, protein, carbs, fat, book, page, breakfast, lunch, dinner</b>
+              CSV columns:
+              <b>name, cal, protein, carbs, fat, book, page, breakfast, lunch, dinner, ingredients</b>
             </div>
 
-            <textarea id="bulk" placeholder="Example: Pasta bake,650,25,80,18,Everyday Meals,45,0,1,1" style="width:100%; min-height:96px;"></textarea>
-            <div class="row" style="justify-content:space-between;">
-              <span class="muted">Format: name, cal, protein, carbs, fat, book, page, b, l, d</span>
+            <div class="fileRow">
+              <input id="csvFile" type="file" accept=".csv,text/csv" />
+              <button id="importCsvFile" class="smallBtn" type="button">Import CSV file</button>
+              <span class="muted">or paste below:</span>
+            </div>
+
+            <textarea id="bulk" placeholder="Example: Pasta bake,650,25,80,18,Everyday Meals,45,0,1,1,chicken|pasta|tomato sauce" style="width:100%; min-height:96px;"></textarea>
+            <div class="row" style="justify-content:space-between; flex-wrap:wrap;">
+              <span class="muted">Format: name, cal, protein, carbs, fat, book, page, b, l, d, ingredients</span>
               <button id="importBulk" class="smallBtn" type="button">Import</button>
+            </div>
+
+            <hr style="border:none;border-top:1px solid var(--border); margin:6px 0;" />
+
+            <div class="fileRow">
+              <button id="exportJson" class="smallBtn" type="button">Export JSON</button>
+              <input id="jsonFile" type="file" accept=".json,application/json" />
+              <button id="importJsonFile" class="smallBtn" type="button">Import JSON</button>
+            </div>
+            <div class="inlineNote">
+              JSON export includes: dishes (with ingredients), targets, week plans, and weather settings. Import lets you <b>Replace</b> or <b>Merge</b>.
             </div>
           </div>
         </details>
@@ -704,29 +720,65 @@
 (() => {
   const DAYS = ["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday","Sunday"];
   const MEALS = ["Breakfast","Lunch","Dinner"];
-  const KEY = "mealPlanner.macro.v14";
+  const KEY = "mealPlanner.macro.v16";
   const THEME_KEY = "mealPlanner.theme";
-
-  // ✅ Single place to rename Pantry/Kitchen in the UI
   const KITCHEN_LABEL = "Kitchen";
+
+  // SVG icons (list + close). Uses currentColor.
+  const ICON_LIST = `
+    <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <path d="M8 6h13M8 12h13M8 18h13" stroke-width="2" stroke-linecap="round"/>
+      <path d="M4 6h.01M4 12h.01M4 18h.01" stroke-width="4" stroke-linecap="round"/>
+    </svg>
+  `;
+  const ICON_CLOSE = `
+    <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <path d="M6 6l12 12M18 6L6 18" stroke-width="2" stroke-linecap="round"/>
+    </svg>
+  `;
 
   function defaultState() {
     return {
       targets: { cal: 2200, protein: 160, carbs: 220, fat: 70 },
       dishes: [
-        { id: crypto.randomUUID(), name: "Pasta bake", cal: 650, protein: 25, carbs: 80, fat: 18, book: "Everyday Meals", page: 45, categories: { Breakfast:false, Lunch:true, Dinner:true } },
-        { id: crypto.randomUUID(), name: "Overnight oats", cal: 420, protein: 18, carbs: 55, fat: 12, book: "Breakfast Club", page: 12, categories: { Breakfast:true, Lunch:false, Dinner:false } },
-        { id: crypto.randomUUID(), name: "Chicken & rice", cal: 520, protein: 40, carbs: 55, fat: 10, book: "", page: null, categories: { Breakfast:false, Lunch:true, Dinner:true } }
+        {
+          id: crypto.randomUUID(),
+          name: "Pasta bake",
+          cal: 650, protein: 25, carbs: 80, fat: 18,
+          book: "Everyday Meals", page: 45,
+          ingredients: ["chicken", "pasta", "tomato sauce"],
+          categories: { Breakfast:false, Lunch:true, Dinner:true }
+        },
+        {
+          id: crypto.randomUUID(),
+          name: "Overnight oats",
+          cal: 420, protein: 18, carbs: 55, fat: 12,
+          book: "Breakfast Club", page: 12,
+          ingredients: ["oats", "milk", "yogurt", "berries"],
+          categories: { Breakfast:true, Lunch:false, Dinner:false }
+        },
+        {
+          id: crypto.randomUUID(),
+          name: "Chicken & rice",
+          cal: 520, protein: 40, carbs: 55, fat: 10,
+          book: "", page: null,
+          ingredients: ["chicken", "rice", "broccoli"],
+          categories: { Breakfast:false, Lunch:true, Dinner:true }
+        }
       ],
       planByWeekStart: {},
-      ui: { selectedDishId: null, dayClipboard: null },
+      ui: {
+        selectedDishId: null,
+        dayClipboard: null,
+        expandedIngredients: {} // dishId -> boolean
+      },
       weather: { enabled: false, locationName: "", lat: null, lon: null, tz: Intl.DateTimeFormat().resolvedOptions().timeZone || "auto", cacheByWeek: {} },
       uiPrefs: { pantryCollapsedMobile: false }
     };
   }
 
   function loadState() {
-    const tryKeys = [KEY, "mealPlanner.macro.v13", "mealPlanner.macro.v12", "mealPlanner.macro.v11", "mealPlanner.macro.v10", "mealPlanner.macro.v9"];
+    const tryKeys = [KEY, "mealPlanner.macro.v15", "mealPlanner.macro.v14", "mealPlanner.macro.v13", "mealPlanner.macro.v12", "mealPlanner.macro.v11", "mealPlanner.macro.v10", "mealPlanner.macro.v9"];
     for (const k of tryKeys) {
       const raw = localStorage.getItem(k);
       if (!raw) continue;
@@ -737,14 +789,21 @@
         const def = defaultState();
         parsed.targets = { ...def.targets, ...(parsed.targets || {}) };
         parsed.ui = { ...def.ui, ...(parsed.ui || {}) };
+        parsed.ui.expandedIngredients = parsed.ui.expandedIngredients && typeof parsed.ui.expandedIngredients === "object"
+          ? parsed.ui.expandedIngredients
+          : {};
         parsed.weather = { ...def.weather, ...(parsed.weather || {}) };
         parsed.uiPrefs = { ...def.uiPrefs, ...(parsed.uiPrefs || {}) };
 
         parsed.dishes = parsed.dishes.map(d => ({
           book: "",
           page: null,
+          ingredients: [],
           categories: { Breakfast:true, Lunch:true, Dinner:true },
           ...d,
+          ingredients: Array.isArray(d.ingredients)
+            ? d.ingredients.map(x => String(x).trim()).filter(Boolean)
+            : (String(d.ingredients || "").split("|").map(x=>x.trim()).filter(Boolean)),
           categories: { Breakfast:true, Lunch:true, Dinner:true, ...(d.categories || {}) }
         }));
 
@@ -770,7 +829,6 @@
   let state = loadState();
   function saveState(){ localStorage.setItem(KEY, JSON.stringify(state)); }
 
-  // Close any open day menus
   document.addEventListener("click", () => {
     document.querySelectorAll(".menuPanel.open").forEach(m => m.classList.remove("open"));
   });
@@ -870,10 +928,18 @@
   const elDishFat = document.getElementById("dishFat");
   const elDishBook = document.getElementById("dishBook");
   const elDishPage = document.getElementById("dishPage");
+  const elDishIngredients = document.getElementById("dishIngredients");
   const catBreakfast = document.getElementById("catBreakfast");
   const catLunch = document.getElementById("catLunch");
   const catDinner = document.getElementById("catDinner");
   const elBulk = document.getElementById("bulk");
+
+  // File import/export
+  const csvFile = document.getElementById("csvFile");
+  const importCsvFileBtn = document.getElementById("importCsvFile");
+  const exportJsonBtn = document.getElementById("exportJson");
+  const jsonFile = document.getElementById("jsonFile");
+  const importJsonFileBtn = document.getElementById("importJsonFile");
 
   // Weather dialog
   const weatherBtn = document.getElementById("weatherBtn");
@@ -887,11 +953,11 @@
   const saveWeatherBtn = document.getElementById("saveWeather");
   const clearLocationBtn = document.getElementById("clearLocation");
 
-  // Mobile kitchen toggle (ids kept for compatibility)
+  // Mobile kitchen toggle
   const togglePantryBtn = document.getElementById("togglePantry");
   const mobilePantryStatus = document.getElementById("mobilePantryStatus");
 
-  // ✅ Apply kitchen label everywhere (title + mobile status + button)
+  // Apply kitchen label
   const kitchenTitle = document.getElementById("kitchenTitle");
   if (kitchenTitle) kitchenTitle.textContent = KITCHEN_LABEL;
 
@@ -928,6 +994,22 @@
     return `p.${page}`;
   }
 
+  function ingredientsToText(ingredients){
+    const arr = Array.isArray(ingredients) ? ingredients : [];
+    return arr.map(x => String(x).trim()).filter(Boolean).join(", ");
+  }
+
+  function parseIngredientsFromText(text){
+    const raw = String(text || "");
+    const lines = raw.split("\n").map(x=>x.trim()).filter(Boolean);
+    if (lines.length > 1) return lines;
+    const one = raw.trim();
+    if (!one) return [];
+    if (one.includes("|")) return one.split("|").map(x=>x.trim()).filter(Boolean);
+    if (one.includes(",")) return one.split(",").map(x=>x.trim()).filter(Boolean);
+    return [one];
+  }
+
   // ---------- Filters ----------
   function getSelectedCategories(){
     const selected = new Set();
@@ -943,7 +1025,11 @@
 
     const arr=[...state.dishes].sort((a,b)=>a.name.localeCompare(b.name));
     return arr.filter(d => {
-      const textOk = !s || d.name.toLowerCase().includes(s) || (d.book||"").toLowerCase().includes(s);
+      const ing = ingredientsToText(d.ingredients).toLowerCase();
+      const textOk = !s ||
+        d.name.toLowerCase().includes(s) ||
+        (d.book||"").toLowerCase().includes(s) ||
+        ing.includes(s);
       if (!textOk) return false;
 
       if (!useFilter || selected.size === 0) return true;
@@ -1185,11 +1271,13 @@
     elDishFat.value = "";
     elDishBook.value = "";
     elDishPage.value = "";
+    elDishIngredients.value = "";
     catBreakfast.checked = true;
     catLunch.checked = true;
     catDinner.checked = true;
     elDishName.dataset.editing = "";
   }
+
   function saveDishFromForm(){
     const name = normalizeName(elDishName.value);
     if (!name) return toast("Name required", "warn");
@@ -1201,6 +1289,8 @@
 
     const book = (elDishBook.value || "").trim();
     const pageVal = elDishPage.value ? Number(elDishPage.value) : null;
+
+    const ingredients = parseIngredientsFromText(elDishIngredients.value);
 
     const categories = {
       Breakfast: !!catBreakfast.checked,
@@ -1215,7 +1305,7 @@
     if (editingId) {
       const idx = state.dishes.findIndex(d => d.id === editingId);
       if (idx !== -1) {
-        state.dishes[idx] = { ...state.dishes[idx], name, cal, protein, carbs, fat, book, page: pageVal, categories };
+        state.dishes[idx] = { ...state.dishes[idx], name, cal, protein, carbs, fat, book, page: pageVal, ingredients, categories };
         saveState();
         clearDishForm();
         renderDishList();
@@ -1228,12 +1318,13 @@
       return toast("Dish already exists", "warn");
     }
 
-    state.dishes.push({ id: crypto.randomUUID(), name, cal, protein, carbs, fat, book, page: pageVal, categories });
+    state.dishes.push({ id: crypto.randomUUID(), name, cal, protein, carbs, fat, book, page: pageVal, ingredients, categories });
     saveState();
     clearDishForm();
     renderDishList();
     toast("Dish saved");
   }
+
   function editDish(id){
     const d = getDish(id);
     if (!d) return;
@@ -1245,12 +1336,14 @@
     elDishFat.value = d.fat ?? 0;
     elDishBook.value = d.book ?? "";
     elDishPage.value = d.page ?? "";
+    elDishIngredients.value = (Array.isArray(d.ingredients) ? d.ingredients : []).join("\n");
     catBreakfast.checked = !!d.categories?.Breakfast;
     catLunch.checked = !!d.categories?.Lunch;
     catDinner.checked = !!d.categories?.Dinner;
     elDishName.dataset.editing = d.id;
     elDishName.focus();
   }
+
   function deleteDish(id){
     const d = getDish(id);
     if (!d) return;
@@ -1268,26 +1361,64 @@
     }
 
     if (state.ui.selectedDishId === id) state.ui.selectedDishId = null;
+
+    // clean up expandedIngredients state too
+    if (state.ui.expandedIngredients && state.ui.expandedIngredients[id] != null) {
+      delete state.ui.expandedIngredients[id];
+    }
+
     saveState();
     updateSelectedDishUI();
     renderDishList();
     renderWeek();
     toast("Dish deleted");
   }
+
   function parseBoolLike(v){
     const s = String(v ?? "").trim().toLowerCase();
     if (!s) return false;
     return ["1","true","yes","y","t"].includes(s);
   }
-  function importBulkCSV(){
-    const text = elBulk.value || "";
-    const lines = text.split("\n").map(l=>l.trim()).filter(Boolean);
-    if (lines.length === 0) return toast("No lines", "warn");
 
+  function parseCSVLineSimple(line){
+    const out = [];
+    let cur = "";
+    let inQuotes = false;
+    for (let i=0;i<line.length;i++){
+      const ch = line[i];
+      if (ch === '"'){
+        if (inQuotes && line[i+1] === '"'){ cur += '"'; i++; }
+        else inQuotes = !inQuotes;
+        continue;
+      }
+      if (ch === "," && !inQuotes){
+        out.push(cur.trim());
+        cur = "";
+        continue;
+      }
+      cur += ch;
+    }
+    out.push(cur.trim());
+    return out;
+  }
+
+  function importLinesAsDishes(lines){
     let added=0, skipped=0;
+
     for (const line of lines) {
-      const parts = line.split(",").map(p=>p.trim());
+      const trimmed = line.trim();
+      if (!trimmed) continue;
+
+      const parts = parseCSVLineSimple(trimmed).map(p=>p.trim());
       if (parts.length < 5) { skipped++; continue; }
+
+      if (added === 0 && skipped === 0) {
+        const h = parts.map(x=>x.toLowerCase());
+        if (h.includes("name") && (h.includes("cal") || h.includes("calories"))) {
+          skipped++;
+          continue;
+        }
+      }
 
       const name = normalizeName(parts[0]);
       if (!name) { skipped++; continue; }
@@ -1312,15 +1443,165 @@
         }
       }
 
+      let ingredients = [];
+      if (parts.length >= 11) {
+        ingredients = parseIngredientsFromText(parts[10]);
+      }
+
       if (state.dishes.some(d=>d.name.toLowerCase()===name.toLowerCase())) { skipped++; continue; }
-      state.dishes.push({ id: crypto.randomUUID(), name, cal, protein, carbs, fat, book, page, categories });
+      state.dishes.push({ id: crypto.randomUUID(), name, cal, protein, carbs, fat, book, page, ingredients, categories });
       added++;
     }
 
     saveState();
-    elBulk.value = "";
     renderDishList();
+    renderWeek();
     toast(`Imported ${added}, skipped ${skipped}`);
+  }
+
+  function importBulkCSV(){
+    const text = elBulk.value || "";
+    const lines = text.split("\n").map(l=>l.trim()).filter(Boolean);
+    if (lines.length === 0) return toast("No lines", "warn");
+    importLinesAsDishes(lines);
+    elBulk.value = "";
+  }
+
+  async function importCsvFromFile(file){
+    if (!file) return toast("Choose a CSV file first", "warn");
+    const text = await file.text();
+    const lines = text.split(/\r?\n/).map(l=>l.trim()).filter(Boolean);
+    if (!lines.length) return toast("CSV was empty", "warn");
+    importLinesAsDishes(lines);
+  }
+
+  // ---------- JSON Export / Import ----------
+  function exportJSON(){
+    const payload = {
+      version: 1,
+      exportedAt: new Date().toISOString(),
+      data: state
+    };
+    const json = JSON.stringify(payload, null, 2);
+    const blob = new Blob([json], { type:"application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `meal-planner-backup-${toISO(new Date())}.json`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+    toast("Exported JSON");
+  }
+
+  function normalizeImportedState(incoming){
+    const def = defaultState();
+    const s = incoming && typeof incoming === "object" ? incoming : {};
+    s.targets = { ...def.targets, ...(s.targets || {}) };
+    s.ui = { ...def.ui, ...(s.ui || {}) };
+    s.ui.expandedIngredients = s.ui.expandedIngredients && typeof s.ui.expandedIngredients === "object"
+      ? s.ui.expandedIngredients
+      : {};
+    s.weather = { ...def.weather, ...(s.weather || {}) };
+    s.uiPrefs = { ...def.uiPrefs, ...(s.uiPrefs || {}) };
+    s.planByWeekStart = s.planByWeekStart || {};
+    s.dishes = Array.isArray(s.dishes) ? s.dishes : [];
+
+    s.dishes = s.dishes.map(d => ({
+      id: d.id || crypto.randomUUID(),
+      name: normalizeName(d.name || ""),
+      cal: Number(d.cal) || 0,
+      protein: Number(d.protein) || 0,
+      carbs: Number(d.carbs) || 0,
+      fat: Number(d.fat) || 0,
+      book: (d.book || "").trim(),
+      page: (d.page === "" || d.page == null) ? null : Number(d.page),
+      ingredients: Array.isArray(d.ingredients)
+        ? d.ingredients.map(x => String(x).trim()).filter(Boolean)
+        : parseIngredientsFromText(d.ingredients || ""),
+      categories: { Breakfast:true, Lunch:true, Dinner:true, ...(d.categories || {}) }
+    })).filter(d => d.name);
+
+    for (const wk of Object.keys(s.planByWeekStart)) {
+      for (const day of DAYS) {
+        if (!s.planByWeekStart[wk][day]) s.planByWeekStart[wk][day] = {};
+        if (s.planByWeekStart[wk][day]._locked == null) s.planByWeekStart[wk][day]._locked = false;
+        for (const meal of MEALS) {
+          if (!s.planByWeekStart[wk][day][meal]) s.planByWeekStart[wk][day][meal] = { dishId: null, servings: 1 };
+        }
+      }
+    }
+    return s;
+  }
+
+  function mergeState(current, imported){
+    const merged = structuredClone(current);
+
+    merged.targets = { ...merged.targets, ...(imported.targets || {}) };
+
+    merged.weather = { ...merged.weather, ...(imported.weather || {}) };
+    if (merged.weather) merged.weather.cacheByWeek = {};
+
+    const byName = new Map();
+    for (const d of merged.dishes){
+      byName.set(d.name.toLowerCase(), d);
+    }
+    for (const d of imported.dishes || []){
+      byName.set(d.name.toLowerCase(), d);
+    }
+    merged.dishes = Array.from(byName.values());
+
+    merged.planByWeekStart = { ...(merged.planByWeekStart || {}), ...(imported.planByWeekStart || {}) };
+
+    merged.uiPrefs = { ...(merged.uiPrefs || {}), ...(current.uiPrefs || {}) };
+    merged.ui = { ...(merged.ui || {}), ...(current.ui || {}) };
+    merged.ui.expandedIngredients = merged.ui.expandedIngredients && typeof merged.ui.expandedIngredients === "object"
+      ? merged.ui.expandedIngredients
+      : {};
+
+    return merged;
+  }
+
+  async function importJSONFromFile(file){
+    if (!file) return toast("Choose a JSON file first", "warn");
+    let text = "";
+    try {
+      text = await file.text();
+    } catch {
+      return toast("Couldn't read file", "warn");
+    }
+
+    let parsed;
+    try {
+      parsed = JSON.parse(text);
+    } catch {
+      return toast("Invalid JSON", "warn");
+    }
+
+    const incomingData = parsed && parsed.data ? parsed.data : parsed;
+    const normalized = normalizeImportedState(incomingData);
+
+    const replace = confirm(
+      "Import JSON:\n\nOK = REPLACE everything on this device\nCancel = MERGE into existing data"
+    );
+
+    if (replace) {
+      state = normalized;
+      state.ui.selectedDishId = null;
+      state.ui.dayClipboard = null;
+      saveState();
+      renderAll();
+      toast("Imported (replaced)");
+      return;
+    }
+
+    state = mergeState(state, normalized);
+    state.ui.selectedDishId = null;
+    state.ui.dayClipboard = null;
+    saveState();
+    renderAll();
+    toast("Imported (merged)");
   }
 
   // ---------- Targets ----------
@@ -1547,7 +1828,7 @@
 
   function exportWeekCSV(){
     const plan = ensureWeekPlan();
-    const rows = [["day","date","locked","meal","dish","recipe_book","page","calories","protein_g","carbs_g","fat_g"]];
+    const rows = [["day","date","locked","meal","dish","recipe_book","page","ingredients","calories","protein_g","carbs_g","fat_g"]];
     DAYS.forEach((day, idx) => {
       const dateObj = addDays(weekStart, idx);
       const dateStr = formatDate(dateObj);
@@ -1560,6 +1841,7 @@
           d ? d.name : "",
           d ? (d.book || "") : "",
           d ? (d.page != null ? d.page : "") : "",
+          d ? (Array.isArray(d.ingredients) ? d.ingredients.join("|") : "") : "",
           d ? Math.round(+d.cal||0) : 0,
           d ? Math.round(+d.protein||0) : 0,
           d ? Math.round(+d.carbs||0) : 0,
@@ -1567,7 +1849,7 @@
         ]);
       });
       const tot = dayTotals(plan[day]);
-      rows.push([day, dateStr, plan[day]._locked ? "1" : "0", "TOTAL", "", "", "", Math.round(tot.cal), Math.round(tot.protein), Math.round(tot.carbs), Math.round(tot.fat)]);
+      rows.push([day, dateStr, plan[day]._locked ? "1" : "0", "TOTAL", "", "", "", "", Math.round(tot.cal), Math.round(tot.protein), Math.round(tot.carbs), Math.round(tot.fat)]);
     });
 
     const csv = rows.map(r => r.map(cell => `"${String(cell).replace(/"/g,'""')}"`).join(",")).join("\n");
@@ -1580,6 +1862,21 @@
     a.click();
     a.remove();
     URL.revokeObjectURL(url);
+  }
+
+  // ---------- Ingredients toggle helpers (smooth animation) ----------
+  function setIngPanelOpen(panelEl, open){
+    if (!panelEl) return;
+    if (open){
+      panelEl.classList.add("open");
+      panelEl.style.maxHeight = panelEl.scrollHeight + "px";
+    } else {
+      panelEl.style.maxHeight = panelEl.scrollHeight + "px";
+      requestAnimationFrame(() => {
+        panelEl.classList.remove("open");
+        panelEl.style.maxHeight = "0px";
+      });
+    }
   }
 
   // ---------- Render ----------
@@ -1724,6 +2021,7 @@
           menu.classList.remove("open");
           const action = btn.dataset.action;
 
+          const plan = ensureWeekPlan();
           if (action === "copy") return copyDay(plan, day);
           if (action === "paste") return pasteDay(plan, day);
           if (action === "fill") return fillDayEmptySmart(plan, day);
@@ -1797,9 +2095,14 @@
     });
   }
 
+  // ---------- Kitchen list render (ingredients hidden + list icon toggle only when ingredients exist) ----------
   function renderDishList(){
     const list = filteredDishes(elSearch.value);
     elDishList.innerHTML = "";
+
+    state.ui.expandedIngredients = state.ui.expandedIngredients && typeof state.ui.expandedIngredients === "object"
+      ? state.ui.expandedIngredients
+      : {};
 
     list.forEach(d => {
       const el = document.createElement("div");
@@ -1812,6 +2115,15 @@
       const loc = dishLocation(d);
       const cats = d.categories || {};
       const catText = ["Breakfast","Lunch","Dinner"].filter(m => cats[m]).join(", ") || "—";
+      const ingText = ingredientsToText(d.ingredients);
+      const hasIngredients = !!ingText;
+      const expanded = hasIngredients ? !!state.ui.expandedIngredients[d.id] : false;
+
+      // If no ingredients, ensure we don't keep stale "expanded" state
+      if (!hasIngredients && state.ui.expandedIngredients[d.id]) {
+        delete state.ui.expandedIngredients[d.id];
+        saveState();
+      }
 
       el.innerHTML = `
         <div>
@@ -1819,20 +2131,44 @@
             <strong>${d.name}</strong>
             <small class="micro">(${d.cal} kcal, ${d.protein}P, ${d.carbs}C, ${d.fat}F)</small>
           </div>
+
           ${loc ? `<div class="micro"><i>${loc}</i></div>` : ""}
-          <div class="micro">Categories: ${catText}</div>
+
+          ${
+            hasIngredients
+              ? `<div class="ingPanel ${expanded ? "open" : ""}" data-ings-panel="${d.id}">
+                   <em>${ingText}</em>
+                 </div>`
+              : ``
+          }
+
+          <div class="micro" style="margin-top:6px;">Categories: ${catText}</div>
         </div>
 
         <div class="dishActions">
+          ${
+            hasIngredients
+              ? `<button class="miniIcon" data-toggle-ings="${d.id}"
+                   title="${expanded ? "Hide ingredients" : "Show ingredients"}"
+                   aria-label="${expanded ? "Hide ingredients" : "Show ingredients"}"
+                   aria-pressed="${expanded}">
+                   ${expanded ? ICON_CLOSE : ICON_LIST}
+                 </button>`
+              : ``
+          }
           <button class="miniIcon" data-edit="${d.id}" title="Edit dish" aria-label="Edit">✏️</button>
           <button class="miniIcon danger" data-delete="${d.id}" title="Delete dish" aria-label="Delete">🗑️</button>
         </div>
       `;
 
+      const panel = hasIngredients ? el.querySelector(`[data-ings-panel="${d.id}"]`) : null;
+      if (hasIngredients) {
+        panel.style.maxHeight = expanded ? (panel.scrollHeight + "px") : "0px";
+      }
+
       el.addEventListener("click", (ev) => {
         const t = ev.target;
         if (t && t.closest && t.closest(".dishActions")) return;
-
         if (state.ui.selectedDishId === d.id) clearSelectedDish();
         else setSelectedDish(d.id);
       });
@@ -1842,6 +2178,24 @@
         ev.dataTransfer.setData("text/plain", JSON.stringify(payload));
         ev.dataTransfer.effectAllowed = "copyMove";
       });
+
+      if (hasIngredients) {
+        el.querySelector(`[data-toggle-ings="${d.id}"]`).addEventListener("click", (ev) => {
+          ev.stopPropagation();
+
+          const nowOpen = !state.ui.expandedIngredients[d.id];
+          state.ui.expandedIngredients[d.id] = nowOpen;
+
+          const btn = ev.currentTarget;
+          btn.innerHTML = nowOpen ? ICON_CLOSE : ICON_LIST;
+          btn.title = nowOpen ? "Hide ingredients" : "Show ingredients";
+          btn.setAttribute("aria-label", btn.title);
+          btn.setAttribute("aria-pressed", String(nowOpen));
+
+          setIngPanelOpen(panel, nowOpen);
+          saveState();
+        });
+      }
 
       el.querySelector("[data-edit]").addEventListener("click", (ev) => { ev.stopPropagation(); editDish(d.id); });
       el.querySelector("[data-delete]").addEventListener("click", (ev) => { ev.stopPropagation(); deleteDish(d.id); });
@@ -1892,7 +2246,7 @@
     weatherDialog.close();
   });
 
-  // ✅ Mobile kitchen collapse (uses KITCHEN_LABEL)
+  // Mobile kitchen collapse
   function applyPantryCollapsed(){
     const collapsed = !!state.uiPrefs.pantryCollapsedMobile;
     const lower = KITCHEN_LABEL.toLowerCase();
@@ -1955,7 +2309,14 @@
   document.getElementById("importBulk").addEventListener("click", importBulkCSV);
   elDishName.addEventListener("keydown", (e)=>{ if(e.key==="Enter"){ e.preventDefault(); saveDishFromForm(); } });
 
-  // defaults for form
+  importCsvFileBtn.addEventListener("click", async () => {
+    await importCsvFromFile(csvFile.files?.[0]);
+  });
+  exportJsonBtn.addEventListener("click", exportJSON);
+  importJsonFileBtn.addEventListener("click", async () => {
+    await importJSONFromFile(jsonFile.files?.[0]);
+  });
+
   catBreakfast.checked = true;
   catLunch.checked = true;
   catDinner.checked = true;
