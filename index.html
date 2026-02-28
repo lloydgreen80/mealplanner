@@ -153,6 +153,11 @@
       background: linear-gradient(180deg, color-mix(in srgb, var(--card) 96%, #000 4%), transparent);
       display:grid;
       gap:10px;
+      position:relative;
+    }
+    .dayCard.locked{
+      outline:2px solid color-mix(in srgb, var(--accent2) 35%, transparent 65%);
+      outline-offset:2px;
     }
 
     .dayHeader{
@@ -163,28 +168,25 @@
       flex-wrap:wrap;
     }
 
-    .dayTitle{ display:flex; gap:10px; align-items:flex-start; }
+    .dayTitle{
+      display:flex;
+      gap:12px;
+      align-items:flex-start;
+      justify-content:space-between;
+      width:100%;
+    }
+    .dayTitle > .left{
+      display:flex;
+      flex-direction:column;
+      gap:4px;
+    }
     .dayTitle strong{ font-size:14px; }
     .dayTitle .micro{ margin-top:2px; display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
-
-    .dayActions{ display:flex; gap:8px; align-items:center; }
-    .iconBtnSmall{
-      width:32px; height:32px;
-      display:inline-flex; align-items:center; justify-content:center;
-      padding:0;
-      border-radius:10px;
-      border:1px solid var(--border);
-      background: color-mix(in srgb, var(--card) 92%, #000 8%);
-      cursor:pointer;
-    }
-    .iconBtnSmall.danger{
-      border-color: color-mix(in srgb, var(--bad2) 35%, var(--border) 65%);
-      color: color-mix(in srgb, var(--bad2) 70%, var(--text) 30%);
-    }
 
     .totalsBox{ text-align:right; min-width:240px; }
     .totalsBox .kcal{ font-size:15px; font-weight:800; }
 
+    /* Compact macro bars: 2x2 */
     .progressWrap{
       margin-top:8px;
       display:grid;
@@ -249,9 +251,7 @@
       border-radius:12px;
     }
     @media (min-width: 921px){
-      .list{
-        max-height: calc(100vh - 210px);
-      }
+      .list{ max-height: calc(100vh - 210px); }
     }
     @media (max-width:920px){
       .list{ max-height: 320px; }
@@ -367,18 +367,95 @@
     @media (max-width:920px){
       .mobilePantryBar{ display:block; }
     }
-    .mobilePantryBar .card{
-      padding:10px;
+    .mobilePantryBar .card{ padding:10px; }
+
+    @media (max-width:920px){
+      .pantryCollapsed aside.card{ display:none; }
+      .pantryCollapsed .grid{ grid-template-columns: 1fr; }
     }
 
-    /* Collapsible pantry on mobile */
-    @media (max-width:920px){
-      .pantryCollapsed aside.card{
-        display:none;
-      }
-      .pantryCollapsed .grid{
-        grid-template-columns: 1fr;
-      }
+    /* --- Day kebab menu --- */
+    .dayMenu{
+      position:relative;
+      display:flex;
+      flex-direction:column;
+      align-items:flex-end;
+      gap:6px;
+      margin-top:2px;
+    }
+    .kebabBtn{
+      width:32px;
+      height:28px;
+      padding:0;
+      border-radius:10px;
+      border:1px solid var(--border);
+      background: color-mix(in srgb, var(--card) 92%, #000 8%);
+      cursor:pointer;
+      display:inline-flex;
+      align-items:center;
+      justify-content:center;
+      color: var(--muted);
+    }
+    .kebabBtn:hover{
+      background: color-mix(in srgb, var(--card) 86%, var(--accent2) 14%);
+      color: color-mix(in srgb, var(--text) 75%, var(--muted) 25%);
+    }
+    .kebabDots{
+      font-size:18px;
+      line-height:1;
+      transform: translateY(-1px);
+    }
+    .menuPanel{
+      position:absolute;
+      top:34px;
+      right:0;
+      min-width:200px;
+      border-radius:12px;
+      border:1px solid var(--border);
+      background: color-mix(in srgb, var(--card) 96%, #000 4%);
+      box-shadow: var(--shadow);
+      padding:6px;
+      z-index:25;
+      display:none;
+    }
+    .menuPanel.open{ display:block; }
+    .menuItem{
+      width:100%;
+      text-align:left;
+      padding:9px 10px;
+      border-radius:10px;
+      border:1px solid transparent;
+      background: transparent;
+      cursor:pointer;
+      color: var(--text);
+      display:flex;
+      align-items:center;
+      gap:10px;
+    }
+    .menuItem:hover{
+      background: color-mix(in srgb, var(--card) 86%, var(--accent2) 14%);
+      border-color: color-mix(in srgb, var(--accent1) 30%, transparent 70%);
+    }
+    .menuItem.danger{
+      color: color-mix(in srgb, var(--bad2) 75%, var(--text) 25%);
+    }
+    .menuItem.disabled{
+      opacity:.45;
+      cursor:not-allowed;
+    }
+    .menuItem.disabled:hover{
+      background: transparent;
+      border-color: transparent;
+    }
+    .menuItem .menuIcon{
+      width:18px;
+      text-align:center;
+    }
+    .menuDivider{
+      height:1px;
+      background: var(--border);
+      margin:6px 4px;
+      border-radius:999px;
     }
 
     dialog{
@@ -404,7 +481,6 @@
     <div class="row" style="gap:12px;">
       <div>
         <h1>Meal Planner — Macros</h1>
-        <div class="micro">Desktop: drag dishes onto meals. Mobile: tap a dish to select, then tap a meal slot to assign.</div>
       </div>
 
       <div class="headerRight">
@@ -419,7 +495,6 @@
   </header>
 
   <main id="mainRoot">
-    <!-- Mobile: collapse/expand pantry -->
     <div class="mobilePantryBar">
       <div class="card">
         <div class="row" style="justify-content:space-between;">
@@ -465,7 +540,6 @@
 
         <hr style="border:none;border-top:1px solid var(--border); margin:14px 0;" />
 
-        <!-- Collapsible targets -->
         <details id="targetsDetails">
           <summary>Daily targets (tap to expand)</summary>
 
@@ -496,7 +570,6 @@
 
         <hr style="border:none;border-top:1px solid var(--border); margin:14px 0;" />
 
-        <!-- Auto-collapsed by default on desktop -->
         <details id="dishAdminDetails">
           <summary>Add / Import dishes</summary>
           <div style="margin-top:12px; display:grid; gap:10px;">
@@ -603,7 +676,7 @@
 (() => {
   const DAYS = ["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday","Sunday"];
   const MEALS = ["Breakfast","Lunch","Dinner"];
-  const KEY = "mealPlanner.macro.v12";
+  const KEY = "mealPlanner.macro.v13";
   const THEME_KEY = "mealPlanner.theme";
 
   function defaultState() {
@@ -615,7 +688,10 @@
         { id: crypto.randomUUID(), name: "Chicken & rice", cal: 520, protein: 40, carbs: 55, fat: 10, book: "", page: null, categories: { Breakfast:false, Lunch:true, Dinner:true } }
       ],
       planByWeekStart: {},
-      ui: { selectedDishId: null },
+      ui: {
+        selectedDishId: null,
+        dayClipboard: null // { meals: {Breakfast:{dishId},...}, locked:boolean }
+      },
       weather: {
         enabled: false,
         locationName: "",
@@ -624,14 +700,12 @@
         tz: Intl.DateTimeFormat().resolvedOptions().timeZone || "auto",
         cacheByWeek: {}
       },
-      uiPrefs: {
-        pantryCollapsedMobile: false
-      }
+      uiPrefs: { pantryCollapsedMobile: false }
     };
   }
 
   function loadState() {
-    const tryKeys = [KEY, "mealPlanner.macro.v11", "mealPlanner.macro.v10", "mealPlanner.macro.v9", "mealPlanner.macro.v8"];
+    const tryKeys = [KEY, "mealPlanner.macro.v12", "mealPlanner.macro.v11", "mealPlanner.macro.v10", "mealPlanner.macro.v9"];
     for (const k of tryKeys) {
       const raw = localStorage.getItem(k);
       if (!raw) continue;
@@ -640,7 +714,6 @@
         if (!parsed.dishes || !parsed.planByWeekStart) continue;
 
         const def = defaultState();
-
         parsed.targets = { ...def.targets, ...(parsed.targets || {}) };
         parsed.ui = { ...def.ui, ...(parsed.ui || {}) };
         parsed.weather = { ...def.weather, ...(parsed.weather || {}) };
@@ -654,10 +727,10 @@
           categories: { Breakfast:true, Lunch:true, Dinner:true, ...(d.categories || {}) }
         }));
 
-        // ensure week structure
         for (const wk of Object.keys(parsed.planByWeekStart)) {
           for (const day of DAYS) {
             if (!parsed.planByWeekStart[wk][day]) parsed.planByWeekStart[wk][day] = {};
+            if (parsed.planByWeekStart[wk][day]._locked == null) parsed.planByWeekStart[wk][day]._locked = false;
             for (const meal of MEALS) {
               if (!parsed.planByWeekStart[wk][day][meal]) parsed.planByWeekStart[wk][day][meal] = { dishId: null, servings: 1 };
             }
@@ -671,8 +744,13 @@
     return defaultState();
   }
 
-  function saveState(){ localStorage.setItem(KEY, JSON.stringify(state)); }
   let state = loadState();
+  function saveState(){ localStorage.setItem(KEY, JSON.stringify(state)); }
+
+  // Close any open day menus (global, only once)
+  document.addEventListener("click", () => {
+    document.querySelectorAll(".menuPanel.open").forEach(m => m.classList.remove("open"));
+  });
 
   // ---------- Theme ----------
   function getSystemTheme(){
@@ -703,7 +781,6 @@
       return `${d}/${m}/${y}`;
     }
   }
-
   function startOfWeek(date) {
     const d = new Date(date);
     d.setHours(0,0,0,0);
@@ -722,7 +799,7 @@
   let weekStart = startOfWeek(new Date());
 
   function emptyMeal(){ return { dishId: null, servings: 1 }; }
-  function emptyDay(){ const obj = {}; MEALS.forEach(m => obj[m] = emptyMeal()); return obj; }
+  function emptyDay(){ const obj = { _locked:false }; MEALS.forEach(m => obj[m] = emptyMeal()); return obj; }
 
   function ensureWeekPlan(ws=weekStart){
     const key = toISO(ws);
@@ -732,6 +809,7 @@
     } else {
       DAYS.forEach(day => {
         if (!state.planByWeekStart[key][day]) state.planByWeekStart[key][day] = emptyDay();
+        if (state.planByWeekStart[key][day]._locked == null) state.planByWeekStart[key][day]._locked = false;
         MEALS.forEach(meal => {
           if (!state.planByWeekStart[key][day][meal]) state.planByWeekStart[key][day][meal] = emptyMeal();
         });
@@ -760,7 +838,7 @@
   const tCarbs = document.getElementById("tCarbs");
   const tFat = document.getElementById("tFat");
 
-  // Add/import section (wired)
+  // Add/import section
   const dishAdminDetails = document.getElementById("dishAdminDetails");
   const elDishName = document.getElementById("dishName");
   const elDishCal = document.getElementById("dishCal");
@@ -807,7 +885,7 @@
     if (kind === "warn") el.classList.add("toastWarn");
     el.textContent = msg;
     el.style.opacity = "1";
-    setTimeout(()=> el.style.opacity="0", 1800);
+    setTimeout(()=> el.style.opacity="0", 1700);
   }
 
   function normalizeName(s){ return (s||"").trim().replace(/\s+/g," "); }
@@ -823,6 +901,7 @@
     return `p.${page}`;
   }
 
+  // ---------- Filters ----------
   function getSelectedCategories(){
     const selected = new Set();
     if (filterBreakfast.checked) selected.add("Breakfast");
@@ -830,7 +909,6 @@
     if (filterDinner.checked) selected.add("Dinner");
     return selected;
   }
-
   function filteredDishes(q){
     const s=(q||"").trim().toLowerCase();
     const selected = getSelectedCategories();
@@ -850,6 +928,7 @@
     });
   }
 
+  // ---------- Totals ----------
   function dayTotals(dayObj){
     let cal=0, protein=0, carbs=0, fat=0;
     MEALS.forEach(meal => {
@@ -926,6 +1005,8 @@
     if (!dish) return;
 
     const plan = ensureWeekPlan();
+    if (plan[day]._locked) return toast(`${day} is locked`, "warn");
+
     if (dish.categories && dish.categories[meal] === false) {
       toast(`Warning: “${dish.name}” isn’t tagged for ${meal}`, "warn");
     }
@@ -949,12 +1030,10 @@
     if ([95,96,99].includes(code)) return "⛈️";
     return "🌡️";
   }
-
   function weatherKeyForCache(){
     const w = state.weather || {};
     return `${(w.lat ?? "")},${(w.lon ?? "")}`;
   }
-
   function setLocationStatus(){
     const w = state.weather || {};
     if (w.lat == null || w.lon == null) {
@@ -964,7 +1043,6 @@
     const name = w.locationName ? ` (${w.locationName})` : "";
     locationStatus.textContent = `Location: ${w.lat.toFixed(4)}, ${w.lon.toFixed(4)}${name}`;
   }
-
   async function fetchWeatherForWeek(){
     const w = state.weather;
     if (!w.enabled) return;
@@ -1011,7 +1089,6 @@
       toast("Couldn’t load weather (check internet).", "warn");
     }
   }
-
   function getWeatherForDate(dateObj){
     const w = state.weather;
     if (!w.enabled) return null;
@@ -1023,12 +1100,8 @@
     if (!cached) return null;
     return cached.byDateISO?.[toISO(dateObj)] || null;
   }
-
   async function setLocationByGeolocation(){
-    if (!navigator.geolocation) {
-      toast("Geolocation not supported.", "warn");
-      return;
-    }
+    if (!navigator.geolocation) return toast("Geolocation not supported.", "warn");
     toast("Requesting location permission…");
     navigator.geolocation.getCurrentPosition(async (pos) => {
       state.weather.lat = pos.coords.latitude;
@@ -1039,12 +1112,9 @@
       setLocationStatus();
       await fetchWeatherForWeek();
       renderWeek();
-      toast("Location set");
-    }, () => {
-      toast("Location permission denied/unavailable.", "warn");
-    }, { enableHighAccuracy:false, timeout:10000, maximumAge: 600000 });
+    }, () => toast("Location permission denied/unavailable.", "warn"),
+    { enableHighAccuracy:false, timeout:10000, maximumAge: 600000 });
   }
-
   async function setLocationBySearch(query){
     const q = (query || "").trim();
     if (!q) return toast("Enter a place name first", "warn");
@@ -1066,12 +1136,10 @@
       setLocationStatus();
       await fetchWeatherForWeek();
       renderWeek();
-      toast("Location set");
     } catch {
       toast("Couldn’t search location (check internet).", "warn");
     }
   }
-
   function clearWeatherLocation(){
     state.weather.lat = null;
     state.weather.lon = null;
@@ -1096,7 +1164,6 @@
     catDinner.checked = true;
     elDishName.dataset.editing = "";
   }
-
   function saveDishFromForm(){
     const name = normalizeName(elDishName.value);
     if (!name) return toast("Name required", "warn");
@@ -1124,11 +1191,10 @@
       if (idx !== -1) {
         state.dishes[idx] = { ...state.dishes[idx], name, cal, protein, carbs, fat, book, page: pageVal, categories };
         saveState();
-        toast("Dish updated");
         clearDishForm();
         renderDishList();
         renderWeek();
-        return;
+        return toast("Dish updated");
       }
     }
 
@@ -1138,15 +1204,14 @@
 
     state.dishes.push({ id: crypto.randomUUID(), name, cal, protein, carbs, fat, book, page: pageVal, categories });
     saveState();
-    toast("Dish saved");
     clearDishForm();
     renderDishList();
+    toast("Dish saved");
   }
-
   function editDish(id){
     const d = getDish(id);
     if (!d) return;
-    dishAdminDetails.open = true; // auto open
+    dishAdminDetails.open = true;
     elDishName.value = d.name;
     elDishCal.value = d.cal;
     elDishProtein.value = d.protein;
@@ -1160,7 +1225,6 @@
     elDishName.dataset.editing = d.id;
     elDishName.focus();
   }
-
   function deleteDish(id){
     const d = getDish(id);
     if (!d) return;
@@ -1178,27 +1242,23 @@
     }
 
     if (state.ui.selectedDishId === id) state.ui.selectedDishId = null;
-
     saveState();
-    toast("Dish deleted");
     updateSelectedDishUI();
     renderDishList();
     renderWeek();
+    toast("Dish deleted");
   }
-
   function parseBoolLike(v){
     const s = String(v ?? "").trim().toLowerCase();
     if (!s) return false;
     return ["1","true","yes","y","t"].includes(s);
   }
-
   function importBulkCSV(){
     const text = elBulk.value || "";
     const lines = text.split("\n").map(l=>l.trim()).filter(Boolean);
     if (lines.length === 0) return toast("No lines", "warn");
 
     let added=0, skipped=0;
-
     for (const line of lines) {
       const parts = line.split(",").map(p=>p.trim());
       if (parts.length < 5) { skipped++; continue; }
@@ -1233,8 +1293,8 @@
 
     saveState();
     elBulk.value = "";
-    toast(`Imported ${added}, skipped ${skipped}`);
     renderDishList();
+    toast(`Imported ${added}, skipped ${skipped}`);
   }
 
   // ---------- Targets ----------
@@ -1246,11 +1306,11 @@
       fat: Number(tFat.value) || 0
     };
     saveState();
-    toast("Targets saved");
     renderWeek();
+    toast("Targets saved");
   }
 
-  // ---------- Week actions ----------
+  // ---------- Smart fill helpers ----------
   function dishesForMeal(meal){ return state.dishes.filter(d => !!d.categories?.[meal]); }
   function hasTargets(){
     const tar = state.targets || {};
@@ -1264,12 +1324,11 @@
       const diff = (actual - target) / target;
       return diff * diff;
     }
-    const wCal = 1.0, wProtein = 1.4, wCarbs = 1.1, wFat = 1.1;
     return (
-      wCal * term(tot.cal, tar.cal) +
-      wProtein * term(tot.protein, tar.protein) +
-      wCarbs * term(tot.carbs, tar.carbs) +
-      wFat * term(tot.fat, tar.fat)
+      1.0 * term(tot.cal, tar.cal) +
+      1.4 * term(tot.protein, tar.protein) +
+      1.1 * term(tot.carbs, tar.carbs) +
+      1.1 * term(tot.fat, tar.fat)
     );
   }
   function dayTotalsIfAddDish(dayObj, dish){
@@ -1285,7 +1344,6 @@
     if (!hasTargets()){
       return pool[Math.floor(Math.random()*pool.length)].id;
     }
-
     let best=null, bestScore=Infinity;
     for (const d of pool){
       const s = scoreAgainstTargets(dayTotalsIfAddDish(dayObj, d));
@@ -1294,11 +1352,105 @@
     return best?.id ?? null;
   }
 
+  // ---------- Day menu actions ----------
+  function isDayLocked(plan, day){ return !!plan[day]._locked; }
+  function toggleDayLock(plan, day){
+    plan[day]._locked = !plan[day]._locked;
+    saveState();
+    renderWeek();
+    toast(plan[day]._locked ? `${day} locked` : `${day} unlocked`);
+  }
+
+  function clearDay(plan, day){
+    if (isDayLocked(plan, day)) return toast(`${day} is locked`, "warn");
+    if (!confirm(`Clear all meals for ${day}?`)) return;
+    const wasLocked = !!plan[day]._locked;
+    plan[day] = emptyDay();
+    plan[day]._locked = wasLocked;
+    saveState();
+    renderWeek();
+  }
+
+  function fillDayEmptySmart(plan, day){
+    if (isDayLocked(plan, day)) return toast(`${day} is locked`, "warn");
+    if (!state.dishes.length) return toast("Add dishes first", "warn");
+
+    const dayObj = plan[day];
+    const used = new Set();
+    for (const meal of MEALS){
+      const id = dayObj[meal]?.dishId;
+      if (id) used.add(id);
+    }
+
+    let changed = false;
+    for (const meal of MEALS){
+      if (dayObj[meal]?.dishId) continue;
+      const pick = smartPickDishForMeal(dayObj, meal, used);
+      if (!pick) continue;
+      dayObj[meal] = { dishId: pick, servings: 1 };
+      used.add(pick);
+      changed = true;
+    }
+    if (changed){
+      saveState(); renderWeek(); toast(`Filled empty meals for ${day}`);
+    } else {
+      toast(`${day} already full`);
+    }
+  }
+
+  function shuffleDay(plan, day){
+    if (isDayLocked(plan, day)) return toast(`${day} is locked`, "warn");
+    if (!state.dishes.length) return toast("Add dishes first", "warn");
+    if (!confirm(`Shuffle all meals for ${day}?`)) return;
+
+    const used = new Set();
+    for (const meal of MEALS){
+      const primary = dishesForMeal(meal).filter(d => !used.has(d.id));
+      const fallback = state.dishes.filter(d => !used.has(d.id));
+      const pool = primary.length ? primary : fallback;
+      if (!pool.length) continue;
+      const pick = pool[Math.floor(Math.random()*pool.length)];
+      plan[day][meal] = { dishId: pick.id, servings: 1 };
+      used.add(pick.id);
+    }
+    saveState();
+    renderWeek();
+    toast(`Shuffled ${day}`);
+  }
+
+  function copyDay(plan, day){
+    const payload = {
+      locked: !!plan[day]._locked,
+      meals: Object.fromEntries(MEALS.map(m => [m, { dishId: plan[day][m]?.dishId || null }]))
+    };
+    state.ui.dayClipboard = payload;
+    saveState();
+    toast(`${day} copied`);
+  }
+
+  function pasteDay(plan, day){
+    if (isDayLocked(plan, day)) return toast(`${day} is locked`, "warn");
+    const clip = state.ui.dayClipboard;
+    if (!clip) return toast("Nothing copied yet", "warn");
+    if (!confirm(`Paste copied day into ${day}? This will overwrite meals.`)) return;
+
+    for (const meal of MEALS){
+      const dishId = clip.meals?.[meal]?.dishId || null;
+      plan[day][meal] = { dishId, servings: 1 };
+    }
+    saveState();
+    renderWeek();
+    toast(`Pasted into ${day}`);
+  }
+
+  // ---------- Week actions ----------
   function fillWeekOnlyEmptySmart(){
     const plan = ensureWeekPlan();
     if (!state.dishes.length) return toast("Add dishes first", "warn");
 
     for (const day of DAYS){
+      if (isDayLocked(plan, day)) continue;
+
       const dayObj = plan[day];
       const used = new Set();
       for (const meal of MEALS){
@@ -1323,6 +1475,8 @@
     if (!state.dishes.length) return toast("Add dishes first", "warn");
 
     for (const day of DAYS){
+      if (isDayLocked(plan, day)) continue;
+
       const used = new Set();
       for (const meal of MEALS){
         const primary = dishesForMeal(meal).filter(d => !used.has(d.id));
@@ -1336,7 +1490,7 @@
     }
     saveState();
     renderWeek();
-    toast("Shuffled week");
+    toast("Shuffled week (unlocked days)");
   }
 
   function copyPlan(){
@@ -1358,7 +1512,8 @@
         const locText = loc ? ` — ${loc}` : "";
         return `  - ${meal}: ${name}${locText}`;
       }).join("\n");
-      return `${day} (${formatDate(dateObj)}) — Total: ${Math.round(tot.cal)} kcal, ${Math.round(tot.protein)}P ${Math.round(tot.carbs)}C ${Math.round(tot.fat)}F\n${mealLines}`;
+      const lockText = dayObj._locked ? " (LOCKED)" : "";
+      return `${day}${lockText} (${formatDate(dateObj)}) — Total: ${Math.round(tot.cal)} kcal, ${Math.round(tot.protein)}P ${Math.round(tot.carbs)}C ${Math.round(tot.fat)}F\n${mealLines}`;
     }).join("\n\n");
 
     navigator.clipboard?.writeText(text).then(()=>toast("Copied")).catch(()=>toast("Couldn't copy", "warn"));
@@ -1366,7 +1521,7 @@
 
   function exportWeekCSV(){
     const plan = ensureWeekPlan();
-    const rows = [["day","date","meal","dish","recipe_book","page","calories","protein_g","carbs_g","fat_g"]];
+    const rows = [["day","date","locked","meal","dish","recipe_book","page","calories","protein_g","carbs_g","fat_g"]];
     DAYS.forEach((day, idx) => {
       const dateObj = addDays(weekStart, idx);
       const dateStr = formatDate(dateObj);
@@ -1375,7 +1530,7 @@
         const e = plan[day][meal];
         const d = e?.dishId ? getDish(e.dishId) : null;
         rows.push([
-          day, dateStr, meal,
+          day, dateStr, plan[day]._locked ? "1" : "0", meal,
           d ? d.name : "",
           d ? (d.book || "") : "",
           d ? (d.page != null ? d.page : "") : "",
@@ -1386,7 +1541,7 @@
         ]);
       });
       const tot = dayTotals(plan[day]);
-      rows.push([day, dateStr, "TOTAL", "", "", "", Math.round(tot.cal), Math.round(tot.protein), Math.round(tot.carbs), Math.round(tot.fat)]);
+      rows.push([day, dateStr, plan[day]._locked ? "1" : "0", "TOTAL", "", "", "", Math.round(tot.cal), Math.round(tot.protein), Math.round(tot.carbs), Math.round(tot.fat)]);
     });
 
     const csv = rows.map(r => r.map(cell => `"${String(cell).replace(/"/g,'""')}"`).join(",")).join("\n");
@@ -1401,7 +1556,7 @@
     URL.revokeObjectURL(url);
   }
 
-  // ---------- Rendering ----------
+  // ---------- Render ----------
   function renderTargetsUI(){
     const tar = state.targets || {};
     tCal.value = tar.cal ?? "";
@@ -1429,20 +1584,55 @@
         `
         : "";
 
+      const locked = !!dayObj._locked;
+
       const wrap = document.createElement("div");
-      wrap.className = "dayCard";
+      wrap.className = "dayCard" + (locked ? " locked" : "");
       wrap.innerHTML = `
         <div class="dayHeader">
           <div class="dayTitle">
-            <div>
-              <strong>${day}</strong>
+            <div class="left">
+              <strong>${day}${locked ? " 🔒" : ""}</strong>
               <div class="micro">
                 <span>${formatDate(dateObj)}</span>
                 ${weatherHTML}
               </div>
             </div>
-            <div class="dayActions">
-              <button class="iconBtnSmall danger" data-clear-day="1" title="Clear this day" aria-label="Clear this day">✕</button>
+
+            <div class="dayMenu">
+              <button class="kebabBtn" type="button" data-kebab="1" aria-label="Day menu" title="Day menu">
+                <span class="kebabDots">⋯</span>
+              </button>
+
+              <div class="menuPanel" data-menu="1" role="menu" aria-label="Day actions">
+                <button class="menuItem" type="button" data-action="copy" role="menuitem">
+                  <span class="menuIcon">📋</span><span>Copy day</span>
+                </button>
+                <button class="menuItem ${state.ui.dayClipboard ? "" : "disabled"}" type="button" data-action="paste" role="menuitem" ${state.ui.dayClipboard ? "" : "aria-disabled='true'"}>
+                  <span class="menuIcon">📥</span><span>Paste day</span>
+                </button>
+
+                <div class="menuDivider"></div>
+
+                <button class="menuItem ${locked ? "disabled" : ""}" type="button" data-action="fill" role="menuitem" ${locked ? "aria-disabled='true'" : ""}>
+                  <span class="menuIcon">✨</span><span>Fill empty meals</span>
+                </button>
+                <button class="menuItem ${locked ? "disabled" : ""}" type="button" data-action="shuffle" role="menuitem" ${locked ? "aria-disabled='true'" : ""}>
+                  <span class="menuIcon">🔀</span><span>Shuffle day</span>
+                </button>
+
+                <div class="menuDivider"></div>
+
+                <button class="menuItem" type="button" data-action="lock" role="menuitem">
+                  <span class="menuIcon">${locked ? "🔓" : "🔒"}</span><span>${locked ? "Unlock day" : "Lock day"}</span>
+                </button>
+
+                <div class="menuDivider"></div>
+
+                <button class="menuItem danger ${locked ? "disabled" : ""}" type="button" data-action="clear" role="menuitem" ${locked ? "aria-disabled='true'" : ""}>
+                  <span class="menuIcon">🧹</span><span>Clear this day</span>
+                </button>
+              </div>
             </div>
           </div>
 
@@ -1471,7 +1661,7 @@
                 <div class="dishBlock">
                   ${d
                     ? `<div class="dishName">${d.name}</div>${loc ? `<div class="dishLoc">${loc}</div>` : ``}`
-                    : `<div class="dishName dishEmpty">Tap here to assign (mobile) or drop a dish</div>`
+                    : `<div class="dishName dishEmpty">Tap to assign or drop a dish</div>`
                   }
                 </div>
 
@@ -1480,7 +1670,7 @@
                 </div>
 
                 <div class="mealBtn">
-                  <button class="smallBtn" data-edit="1" type="button">Edit</button>
+                  <button class="smallBtn" type="button" disabled style="opacity:.55;cursor:not-allowed;">Edit</button>
                 </div>
               </div>
             `;
@@ -1488,13 +1678,35 @@
         </div>
       `;
 
-      wrap.querySelector("[data-clear-day]").addEventListener("click", () => {
-        if (!confirm(`Clear all meals for ${day}?`)) return;
-        plan[day] = emptyDay();
-        saveState();
-        renderWeek();
+      // Kebab menu wiring
+      const kebabBtn = wrap.querySelector('[data-kebab="1"]');
+      const menu = wrap.querySelector('[data-menu="1"]');
+      kebabBtn.addEventListener("click", (ev) => {
+        ev.stopPropagation();
+        document.querySelectorAll(".menuPanel.open").forEach(m => { if (m !== menu) m.classList.remove("open"); });
+        menu.classList.toggle("open");
+      });
+      menu.addEventListener("click", (ev) => ev.stopPropagation());
+
+      // Menu actions
+      menu.querySelectorAll("[data-action]").forEach(btn => {
+        btn.addEventListener("click", (ev) => {
+          ev.stopPropagation();
+          if (btn.classList.contains("disabled")) return;
+
+          menu.classList.remove("open");
+          const action = btn.dataset.action;
+
+          if (action === "copy") return copyDay(plan, day);
+          if (action === "paste") return pasteDay(plan, day);
+          if (action === "fill") return fillDayEmptySmart(plan, day);
+          if (action === "shuffle") return shuffleDay(plan, day);
+          if (action === "lock") return toggleDayLock(plan, day);
+          if (action === "clear") return clearDay(plan, day);
+        });
       });
 
+      // Meal slot interactions
       wrap.querySelectorAll(".mealRow").forEach(row => {
         const dayName = row.dataset.day;
         const mealName = row.dataset.meal;
@@ -1530,6 +1742,7 @@
           try { payload = JSON.parse(json); } catch { return; }
 
           const plan = ensureWeekPlan();
+          if (plan[dayName]._locked) return toast(`${dayName} is locked`, "warn");
 
           if (payload.type === "dish") {
             const dish = getDish(payload.dishId);
@@ -1543,6 +1756,7 @@
           }
 
           if (payload.type === "mealSlot") {
+            if (plan[payload.day]._locked) return toast(`${payload.day} is locked`, "warn");
             const a = plan[payload.day][payload.meal];
             const b = plan[dayName][mealName];
             plan[payload.day][payload.meal] = b;
@@ -1589,7 +1803,6 @@
         </div>
       `;
 
-      // click to select (ignore if pressing action icons)
       el.addEventListener("click", (ev) => {
         const t = ev.target;
         if (t && t.closest && t.closest(".dishActions")) return;
@@ -1619,13 +1832,11 @@
     locationQuery.value = "";
     setLocationStatus();
   }
-
   weatherBtn.addEventListener("click", () => {
     syncWeatherDialogUI();
     weatherDialog.showModal();
   });
   closeWeather.addEventListener("click", () => weatherDialog.close());
-
   useMyLocation.addEventListener("click", async () => {
     showWeather.checked = true;
     state.weather.enabled = true;
@@ -1641,13 +1852,11 @@
   locationQuery.addEventListener("keydown", (e) => {
     if (e.key === "Enter") { e.preventDefault(); findLocation.click(); }
   });
-
   clearLocationBtn.addEventListener("click", () => {
     clearWeatherLocation();
-    toast("Location cleared");
     syncWeatherDialogUI();
+    toast("Location cleared");
   });
-
   saveWeatherBtn.addEventListener("click", async () => {
     state.weather.enabled = !!showWeather.checked;
     if (!state.weather.enabled) state.weather.cacheByWeek = {};
@@ -1670,7 +1879,6 @@
       togglePantryBtn.textContent = "Hide pantry";
     }
   }
-
   togglePantryBtn.addEventListener("click", () => {
     state.uiPrefs.pantryCollapsedMobile = !state.uiPrefs.pantryCollapsedMobile;
     saveState();
@@ -1679,7 +1887,6 @@
 
   // ---------- Wire up controls ----------
   document.getElementById("saveTargets").addEventListener("click", saveTargets);
-
   document.getElementById("fillEmpty").addEventListener("click", fillWeekOnlyEmptySmart);
   document.getElementById("shuffleWeek").addEventListener("click", shuffleWeek);
   document.getElementById("copyPlan").addEventListener("click", copyPlan);
@@ -1692,7 +1899,7 @@
     const label = fmtRange(weekStart);
     if (!confirm(`Clear ALL days for this week (${label})? This cannot be undone.`)) return;
     const plan = ensureWeekPlan();
-    DAYS.forEach(d => plan[d] = emptyDay());
+    DAYS.forEach(d => { if (!plan[d]._locked) plan[d] = emptyDay(); else { const wasLocked = true; plan[d] = emptyDay(); plan[d]._locked = wasLocked; } });
     saveState();
     renderWeek();
   });
@@ -1703,38 +1910,26 @@
     state = defaultState();
     weekStart = startOfWeek(new Date());
     saveState();
-    toast("Reset");
     renderAll();
+    toast("Reset");
   });
 
   clearSelected.addEventListener("click", clearSelectedDish);
 
   elSearch.addEventListener("input", renderDishList);
   document.getElementById("clearSearch").addEventListener("click", ()=>{ elSearch.value=""; renderDishList(); elSearch.focus(); });
-
   [filterBreakfast, filterLunch, filterDinner].forEach(cb => cb.addEventListener("change", renderDishList));
 
-  // Dish form wiring
   document.getElementById("saveDish").addEventListener("click", saveDishFromForm);
   document.getElementById("importBulk").addEventListener("click", importBulkCSV);
   elDishName.addEventListener("keydown", (e)=>{ if(e.key==="Enter"){ e.preventDefault(); saveDishFromForm(); } });
 
-  // set defaults for new dish categories
   catBreakfast.checked = true;
   catLunch.checked = true;
   catDinner.checked = true;
 
-  // Auto-collapse admin section on desktop by default (keeps pantry shorter)
   if (window.matchMedia("(min-width: 921px)").matches) {
     dishAdminDetails.open = false;
-  }
-
-  function renderTargetsUI(){
-    const tar = state.targets || {};
-    tCal.value = tar.cal ?? "";
-    tProtein.value = tar.protein ?? "";
-    tCarbs.value = tar.carbs ?? "";
-    tFat.value = tar.fat ?? "";
   }
 
   function renderAll(){
@@ -1747,7 +1942,6 @@
     applyPantryCollapsed();
   }
 
-  // Initial render + weather load
   (async () => {
     applyPantryCollapsed();
     elWeekRange.textContent = fmtRange(weekStart);
