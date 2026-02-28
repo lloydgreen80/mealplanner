@@ -384,7 +384,7 @@
     .weatherIcon{ font-size:14px; }
     .weatherTemp{ font-size:12px; color:var(--muted); }
 
-    /* Mobile pantry collapse */
+    /* Mobile kitchen collapse bar */
     .mobilePantryBar{
       display:none;
       position: sticky;
@@ -526,16 +526,16 @@
     <div class="mobilePantryBar">
       <div class="card">
         <div class="row" style="justify-content:space-between;">
-          <div class="micro" id="mobilePantryStatus">Pantry shown</div>
-          <button id="togglePantry" class="smallBtn" type="button">Hide pantry</button>
+          <div class="micro" id="mobilePantryStatus"></div>
+          <button id="togglePantry" class="smallBtn" type="button"></button>
         </div>
       </div>
     </div>
 
     <div class="grid">
-      <!-- Pantry LEFT -->
+      <!-- Kitchen LEFT -->
       <aside class="card" id="pantryCard">
-        <h2>Kitchen</h2>
+        <h2 id="kitchenTitle"></h2>
 
         <div class="row" style="margin-bottom:10px;">
           <input id="search" placeholder="Search dishes…" style="flex:1;" />
@@ -707,6 +707,9 @@
   const KEY = "mealPlanner.macro.v14";
   const THEME_KEY = "mealPlanner.theme";
 
+  // ✅ Single place to rename Pantry/Kitchen in the UI
+  const KITCHEN_LABEL = "Kitchen";
+
   function defaultState() {
     return {
       targets: { cal: 2200, protein: 160, carbs: 220, fat: 70 },
@@ -716,18 +719,8 @@
         { id: crypto.randomUUID(), name: "Chicken & rice", cal: 520, protein: 40, carbs: 55, fat: 10, book: "", page: null, categories: { Breakfast:false, Lunch:true, Dinner:true } }
       ],
       planByWeekStart: {},
-      ui: {
-        selectedDishId: null,
-        dayClipboard: null
-      },
-      weather: {
-        enabled: false,
-        locationName: "",
-        lat: null,
-        lon: null,
-        tz: Intl.DateTimeFormat().resolvedOptions().timeZone || "auto",
-        cacheByWeek: {}
-      },
+      ui: { selectedDishId: null, dayClipboard: null },
+      weather: { enabled: false, locationName: "", lat: null, lon: null, tz: Intl.DateTimeFormat().resolvedOptions().timeZone || "auto", cacheByWeek: {} },
       uiPrefs: { pantryCollapsedMobile: false }
     };
   }
@@ -755,7 +748,6 @@
           categories: { Breakfast:true, Lunch:true, Dinner:true, ...(d.categories || {}) }
         }));
 
-        // normalize plan structure
         for (const wk of Object.keys(parsed.planByWeekStart)) {
           for (const day of DAYS) {
             if (!parsed.planByWeekStart[wk][day]) parsed.planByWeekStart[wk][day] = {};
@@ -778,7 +770,7 @@
   let state = loadState();
   function saveState(){ localStorage.setItem(KEY, JSON.stringify(state)); }
 
-  // Close any open day menus (single global listener)
+  // Close any open day menus
   document.addEventListener("click", () => {
     document.querySelectorAll(".menuPanel.open").forEach(m => m.classList.remove("open"));
   });
@@ -895,9 +887,13 @@
   const saveWeatherBtn = document.getElementById("saveWeather");
   const clearLocationBtn = document.getElementById("clearLocation");
 
-  // Mobile pantry toggle
+  // Mobile kitchen toggle (ids kept for compatibility)
   const togglePantryBtn = document.getElementById("togglePantry");
   const mobilePantryStatus = document.getElementById("mobilePantryStatus");
+
+  // ✅ Apply kitchen label everywhere (title + mobile status + button)
+  const kitchenTitle = document.getElementById("kitchenTitle");
+  if (kitchenTitle) kitchenTitle.textContent = KITCHEN_LABEL;
 
   function toast(msg, kind="info"){
     let el = document.getElementById("__toast");
@@ -1703,7 +1699,6 @@
                 </div>
 
                 <div class="mealBtn">
-                  <!-- Uniform pencil icon (disabled for now) -->
                   <button class="miniIcon" type="button" title="Edit" aria-label="Edit" disabled style="opacity:.55;cursor:not-allowed;">✏️</button>
                 </div>
               </div>
@@ -1712,7 +1707,6 @@
         </div>
       `;
 
-      // Kebab menu wiring (no document listeners added here)
       const kebabBtn = wrap.querySelector('[data-kebab="1"]');
       const menu = wrap.querySelector('[data-menu="1"]');
       kebabBtn.addEventListener("click", (ev) => {
@@ -1722,7 +1716,6 @@
       });
       menu.addEventListener("click", (ev) => ev.stopPropagation());
 
-      // Menu actions
       menu.querySelectorAll("[data-action]").forEach(btn => {
         btn.addEventListener("click", (ev) => {
           ev.stopPropagation();
@@ -1740,7 +1733,6 @@
         });
       });
 
-      // Meal slot interactions
       wrap.querySelectorAll(".mealRow").forEach(row => {
         const dayName = row.dataset.day;
         const mealName = row.dataset.meal;
@@ -1900,17 +1892,19 @@
     weatherDialog.close();
   });
 
-  // ---------- Mobile pantry collapse ----------
+  // ✅ Mobile kitchen collapse (uses KITCHEN_LABEL)
   function applyPantryCollapsed(){
     const collapsed = !!state.uiPrefs.pantryCollapsedMobile;
+    const lower = KITCHEN_LABEL.toLowerCase();
+
     if (collapsed) {
       mainRoot.classList.add("pantryCollapsed");
-      mobilePantryStatus.textContent = "Pantry hidden";
-      togglePantryBtn.textContent = "Show pantry";
+      mobilePantryStatus.textContent = `${KITCHEN_LABEL} hidden`;
+      togglePantryBtn.textContent = `Show ${lower}`;
     } else {
       mainRoot.classList.remove("pantryCollapsed");
-      mobilePantryStatus.textContent = "Pantry shown";
-      togglePantryBtn.textContent = "Hide pantry";
+      mobilePantryStatus.textContent = `${KITCHEN_LABEL} shown`;
+      togglePantryBtn.textContent = `Hide ${lower}`;
     }
   }
   togglePantryBtn.addEventListener("click", () => {
