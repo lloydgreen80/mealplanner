@@ -493,6 +493,24 @@
       color:var(--muted);
       line-height:1.35;
     }
+
+    /* TAGS */
+    .tagChips{ display:flex; flex-wrap:wrap; gap:6px; margin-top:6px; }
+    .tagChip{
+      display:inline-flex; align-items:center; gap:6px;
+      padding:3px 8px;
+      border-radius:999px;
+      border:1px solid var(--border);
+      background: color-mix(in srgb, var(--card) 92%, #000 8%);
+      font-size:11px;
+      color: var(--muted);
+      white-space:nowrap;
+    }
+    .tagChip b{ color: var(--text); font-weight:700; }
+    .tagChip .x{ cursor:pointer; opacity:.7; }
+    .tagChip .x:hover{ opacity:1; }
+    .tagPick{ display:flex; flex-wrap:wrap; gap:10px; }
+    .tagPick label{ display:flex; align-items:center; gap:6px; font-size:12px; color:var(--muted); }
   </style>
 </head>
 
@@ -527,7 +545,7 @@
     <div class="grid">
       <!-- Kitchen LEFT -->
       <aside class="card" id="pantryCard">
-        <h2 id="kitchenTitle"></h2>
+        <h2 id="kitchenTitle">Kitchen</h2>
 
         <div class="row" style="margin-bottom:10px;">
           <input id="search" placeholder="Search dishes…" style="flex:1;" />
@@ -539,6 +557,12 @@
           <label><input type="checkbox" id="filterBreakfast" checked> Breakfast</label>
           <label><input type="checkbox" id="filterLunch" checked> Lunch</label>
           <label><input type="checkbox" id="filterDinner" checked> Dinner</label>
+        </div>
+
+        <div style="margin-top:10px;">
+          <div class="muted" style="margin-bottom:6px;">Tag filter</div>
+          <div class="tagChips" id="tagFilterChips"></div>
+          <div class="micro">Tap tags to filter (AND logic). Tap again to remove.</div>
         </div>
 
         <div class="assignBar" id="assignBar">
@@ -615,6 +639,20 @@
 
         <details id="dishAdminDetails">
           <summary>Add / Import dishes</summary>
+
+          <!-- TAGS CONFIG -->
+          <div class="card" style="padding:10px; box-shadow:none; margin-top:10px;">
+            <div class="row" style="justify-content:space-between; align-items:center;">
+              <div class="muted" style="font-weight:700;">Tags</div>
+              <div class="row" style="gap:8px;">
+                <input id="newTagName" placeholder="Add tag…" style="width:180px;" />
+                <button id="addTagBtn" class="smallBtn" type="button">Add</button>
+              </div>
+            </div>
+            <div class="tagChips" id="tagListChips"></div>
+            <div class="inlineNote">Tags are applied to dishes (meal slots inherit dish tags).</div>
+          </div>
+
           <div style="margin-top:12px; display:grid; gap:10px;">
             <input id="dishName" placeholder="Dish name" />
 
@@ -633,7 +671,12 @@
             <div>
               <label class="muted" for="dishIngredients" style="display:block;margin-bottom:6px;">Ingredients (one per line)</label>
               <textarea id="dishIngredients" placeholder="e.g.&#10;chicken breast&#10;rice&#10;broccoli" style="min-height:92px;"></textarea>
-              <div class="inlineNote">Tip: for CSV import/export, ingredients use <b>|</b> between items (but file import supports multiline too).</div>
+              <div class="inlineNote">Tip: for CSV import/export, ingredients use <b>|</b> between items (file import supports multiline too).</div>
+            </div>
+
+            <div>
+              <div class="muted" style="margin-bottom:6px;">Assign tags to this dish</div>
+              <div class="tagPick" id="dishTagsPicker"></div>
             </div>
 
             <div class="checkRow">
@@ -646,7 +689,7 @@
 
             <div class="muted">
               CSV columns:
-              <b>name, cal, protein, carbs, fat, book, page, breakfast, lunch, dinner, ingredients</b>
+              <b>name, cal, protein, carbs, fat, book, page, breakfast, lunch, dinner, ingredients, tags</b>
             </div>
 
             <div class="fileRow">
@@ -655,9 +698,9 @@
               <span class="muted">or paste below:</span>
             </div>
 
-            <textarea id="bulk" placeholder='Example: Pasta bake,650,25,80,18,Everyday Meals,45,0,1,1,"chicken|pasta|tomato sauce"' style="width:100%; min-height:96px;"></textarea>
+            <textarea id="bulk" placeholder='Example: Pasta bake,650,25,80,18,Everyday Meals,45,0,1,1,"chicken|pasta|tomato sauce","Quick|Family"' style="width:100%; min-height:96px;"></textarea>
             <div class="row" style="justify-content:space-between; flex-wrap:wrap;">
-              <span class="muted">Format: name, cal, protein, carbs, fat, book, page, b, l, d, ingredients</span>
+              <span class="muted">Format: name, cal, protein, carbs, fat, book, page, b, l, d, ingredients, tags</span>
               <button id="importBulk" class="smallBtn" type="button">Import</button>
             </div>
 
@@ -669,7 +712,8 @@
               <button id="importJsonFile" class="smallBtn" type="button">Import JSON</button>
             </div>
             <div class="inlineNote">
-              JSON export includes: dishes (with ingredients), targets, week plans, and weather settings. Import lets you <b>Replace</b> or <b>Merge</b>.
+              JSON export includes: dishes (with ingredients/tags), targets, week plans, and weather settings.
+              Import lets you <b>Replace</b> or <b>Merge</b>.
             </div>
           </div>
         </details>
@@ -691,6 +735,7 @@
             <button id="shuffleWeek" class="smallBtn" type="button">Shuffle week</button>
             <button class="primary" id="copyPlan" type="button">Copy plan</button>
             <button id="exportPDF" class="smallBtn" type="button" title="Print / Save as PDF">Export PDF</button>
+            <button id="exportCSV" class="smallBtn" type="button">Export CSV</button>
             <button id="clearWeek" class="smallBtn danger" type="button" title="Clear all days in this week">Clear week</button>
           </div>
         </div>
@@ -744,11 +789,12 @@
 (() => {
   const DAYS = ["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday","Sunday"];
   const MEALS = ["Breakfast","Lunch","Dinner"];
-  const KEY = "mealPlanner.macro.v21"; // bumped version for PDF export
+  const KEY = "mealPlanner.macro.v22"; // bumped version for tags
+
   const THEME_KEY = "mealPlanner.theme";
   const KITCHEN_LABEL = "Kitchen";
 
-  // STRICT repeat rules configuration:
+  // STRICT repeat rules:
   const STRICT_NO_REPEATS = true;
   const NO_REPEAT_WEEKS_BACK = 4;
 
@@ -768,6 +814,9 @@
     return {
       targets: { cal: 2200, protein: 160, carbs: 220, fat: 70 },
       tolerances: { calUnderPct: 50, calOverPct: 5, carbsUnderPct: 50, carbsOverPct: 5 },
+
+      tags: ["Quick","High protein","Family","Budget"],
+
       dishes: [
         {
           id: crypto.randomUUID(),
@@ -775,6 +824,7 @@
           cal: 650, protein: 25, carbs: 80, fat: 18,
           book: "Everyday Meals", page: 45,
           ingredients: ["chicken", "pasta", "tomato sauce"],
+          tags: ["Quick","Family"],
           categories: { Breakfast:false, Lunch:true, Dinner:true }
         },
         {
@@ -783,6 +833,7 @@
           cal: 420, protein: 18, carbs: 55, fat: 12,
           book: "Breakfast Club", page: 12,
           ingredients: ["oats", "milk", "yogurt", "berries"],
+          tags: ["Budget"],
           categories: { Breakfast:true, Lunch:false, Dinner:false }
         },
         {
@@ -791,18 +842,19 @@
           cal: 520, protein: 40, carbs: 55, fat: 10,
           book: "", page: null,
           ingredients: ["chicken", "rice", "broccoli"],
+          tags: ["High protein","Quick"],
           categories: { Breakfast:false, Lunch:true, Dinner:true }
         }
       ],
       planByWeekStart: {},
-      ui: { selectedDishId: null, dayClipboard: null, expandedIngredients: {} },
+      ui: { selectedDishId: null, dayClipboard: null, expandedIngredients: {}, tagFilter: [] },
       weather: { enabled: false, locationName: "", lat: null, lon: null, tz: Intl.DateTimeFormat().resolvedOptions().timeZone || "auto", cacheByWeek: {} },
       uiPrefs: { pantryCollapsedMobile: false }
     };
   }
 
   function loadState() {
-    const tryKeys = [KEY, "mealPlanner.macro.v20", "mealPlanner.macro.v19", "mealPlanner.macro.v18", "mealPlanner.macro.v17", "mealPlanner.macro.v16", "mealPlanner.macro.v15"];
+    const tryKeys = [KEY, "mealPlanner.macro.v21","mealPlanner.macro.v20","mealPlanner.macro.v19","mealPlanner.macro.v18","mealPlanner.macro.v17","mealPlanner.macro.v16","mealPlanner.macro.v15"];
     for (const k of tryKeys) {
       const raw = localStorage.getItem(k);
       if (!raw) continue;
@@ -816,18 +868,25 @@
         parsed.ui = { ...def.ui, ...(parsed.ui || {}) };
         parsed.ui.expandedIngredients = parsed.ui.expandedIngredients && typeof parsed.ui.expandedIngredients === "object"
           ? parsed.ui.expandedIngredients : {};
+        parsed.ui.tagFilter = Array.isArray(parsed.ui.tagFilter) ? parsed.ui.tagFilter : [];
         parsed.weather = { ...def.weather, ...(parsed.weather || {}) };
         parsed.uiPrefs = { ...def.uiPrefs, ...(parsed.uiPrefs || {}) };
+
+        parsed.tags = Array.isArray(parsed.tags)
+          ? parsed.tags.map(t => String(t).trim()).filter(Boolean)
+          : def.tags.slice();
 
         parsed.dishes = parsed.dishes.map(d => ({
           book: "",
           page: null,
           ingredients: [],
+          tags: [],
           categories: { Breakfast:true, Lunch:true, Dinner:true },
           ...d,
           ingredients: Array.isArray(d.ingredients)
             ? d.ingredients.map(x => String(x).trim()).filter(Boolean)
             : (String(d.ingredients || "").split("|").map(x=>x.trim()).filter(Boolean)),
+          tags: Array.isArray(d.tags) ? d.tags.map(x=>String(x).trim()).filter(Boolean) : [],
           categories: { Breakfast:true, Lunch:true, Dinner:true, ...(d.categories || {}) }
         }));
 
@@ -841,6 +900,7 @@
           }
         }
 
+        // store into current key
         localStorage.setItem(KEY, JSON.stringify(parsed));
         return parsed;
       } catch {}
@@ -853,9 +913,63 @@
   let state = loadState();
   function saveState(){ localStorage.setItem(KEY, JSON.stringify(state)); }
 
-  document.addEventListener("click", () => {
-    document.querySelectorAll(".menuPanel.open").forEach(m => m.classList.remove("open"));
-  });
+  // ---------- Utilities ----------
+  function toast(msg, kind="info"){
+    let el = document.getElementById("__toast");
+    if (!el) {
+      el = document.createElement("div");
+      el.id="__toast";
+      el.style.cssText = `
+        position:fixed;left:50%;bottom:18px;transform:translateX(-50%);
+        background: color-mix(in srgb, var(--card) 96%, #000 4%);
+        padding:10px 14px;border-radius:999px;border:1px solid var(--border);
+        box-shadow: var(--shadow);font-size:13px;color:var(--text);z-index:9999;
+        opacity:0;transition:opacity .15s;`;
+      document.body.appendChild(el);
+    }
+    el.classList.remove("toastWarn");
+    if (kind === "warn") el.classList.add("toastWarn");
+    el.textContent = msg;
+    el.style.opacity = "1";
+    setTimeout(()=> el.style.opacity="0", 1900);
+  }
+
+  function normalizeName(s){
+    const raw = String(s ?? "");
+    const lines = raw.split(/\r?\n/).map(l => l.trim()).filter(l => l.length > 0);
+    return lines.join(" ").replace(/\s{2,}/g, " ").trim();
+  }
+
+  function parseIngredientsFromText(text){
+    const raw = String(text || "");
+    const lines = raw.split(/\r?\n/).map(x=>x.trim()).filter(Boolean);
+    if (lines.length > 1) return lines;
+    const one = raw.trim();
+    if (!one) return [];
+    if (one.includes("|")) return one.split("|").map(x=>x.trim()).filter(Boolean);
+    if (one.includes(",")) return one.split(",").map(x=>x.trim()).filter(Boolean);
+    return [one];
+  }
+  function ingredientsToText(ingredients){
+    const arr = Array.isArray(ingredients) ? ingredients : [];
+    return arr.map(x => String(x).trim()).filter(Boolean).join(", ");
+  }
+
+  function normTag(s){
+    return String(s||"").trim().replace(/\s{2,}/g," ");
+  }
+  function ensureTags(){
+    state.tags = Array.isArray(state.tags) ? state.tags.map(normTag).filter(Boolean) : [];
+    const seen = new Map();
+    const out = [];
+    for (const t of state.tags){
+      const k = t.toLowerCase();
+      if (seen.has(k)) continue;
+      seen.set(k,true);
+      out.push(t);
+    }
+    state.tags = out;
+  }
 
   // ---------- Theme ----------
   function getSystemTheme(){
@@ -870,10 +984,6 @@
     document.getElementById("themeLabel").textContent = theme === "dark" ? "Dark" : "Light";
   }
   setTheme(getTheme());
-  document.getElementById("themeToggle").addEventListener("click", () => {
-    const current = getTheme();
-    setTheme(current === "dark" ? "light" : "dark");
-  });
 
   // ---------- Dates ----------
   function formatDate(dateObj){
@@ -903,116 +1013,25 @@
 
   let weekStart = startOfWeek(new Date());
 
+  // ---------- Plan helpers ----------
   function emptyMeal(){ return { dishId: null, servings: 1 }; }
-  function emptyDay(){ const obj = { _locked:false }; ["Breakfast","Lunch","Dinner"].forEach(m => obj[m] = emptyMeal()); return obj; }
+  function emptyDay(){ const obj = { _locked:false }; MEALS.forEach(m => obj[m] = emptyMeal()); return obj; }
 
   function ensureWeekPlan(ws=weekStart){
     const key = toISO(ws);
     if (!state.planByWeekStart[key]) {
-      state.planByWeekStart[key] = Object.fromEntries(["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday","Sunday"].map(d => [d, emptyDay()]));
+      state.planByWeekStart[key] = Object.fromEntries(DAYS.map(d => [d, emptyDay()]));
       saveState();
     } else {
-      ["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday","Sunday"].forEach(day => {
+      DAYS.forEach(day => {
         if (!state.planByWeekStart[key][day]) state.planByWeekStart[key][day] = emptyDay();
         if (state.planByWeekStart[key][day]._locked == null) state.planByWeekStart[key][day]._locked = false;
-        ["Breakfast","Lunch","Dinner"].forEach(meal => {
+        MEALS.forEach(meal => {
           if (!state.planByWeekStart[key][day][meal]) state.planByWeekStart[key][day][meal] = emptyMeal();
         });
       });
     }
     return state.planByWeekStart[key];
-  }
-
-  // ---------- DOM ----------
-  const mainRoot = document.getElementById("mainRoot");
-  const elWeek = document.getElementById("week");
-  const elWeekRange = document.getElementById("weekRange");
-  const elDishList = document.getElementById("dishList");
-  const elCount = document.getElementById("count");
-  const elSearch = document.getElementById("search");
-
-  const filterBreakfast = document.getElementById("filterBreakfast");
-  const filterLunch = document.getElementById("filterLunch");
-  const filterDinner = document.getElementById("filterDinner");
-
-  const selectedDishLabel = document.getElementById("selectedDishLabel");
-  const clearSelected = document.getElementById("clearSelected");
-
-  const tCal = document.getElementById("tCal");
-  const tProtein = document.getElementById("tProtein");
-  const tCarbs = document.getElementById("tCarbs");
-  const tFat = document.getElementById("tFat");
-
-  const tolCalUnder = document.getElementById("tolCalUnder");
-  const tolCalOver = document.getElementById("tolCalOver");
-  const tolCarbUnder = document.getElementById("tolCarbUnder");
-  const tolCarbOver = document.getElementById("tolCarbOver");
-
-  // Add/import section
-  const dishAdminDetails = document.getElementById("dishAdminDetails");
-  const elDishName = document.getElementById("dishName");
-  const elDishCal = document.getElementById("dishCal");
-  const elDishProtein = document.getElementById("dishProtein");
-  const elDishCarbs = document.getElementById("dishCarbs");
-  const elDishFat = document.getElementById("dishFat");
-  const elDishBook = document.getElementById("dishBook");
-  const elDishPage = document.getElementById("dishPage");
-  const elDishIngredients = document.getElementById("dishIngredients");
-  const catBreakfast = document.getElementById("catBreakfast");
-  const catLunch = document.getElementById("catLunch");
-  const catDinner = document.getElementById("catDinner");
-  const elBulk = document.getElementById("bulk");
-
-  // File import/export
-  const csvFile = document.getElementById("csvFile");
-  const importCsvFileBtn = document.getElementById("importCsvFile");
-  const exportJsonBtn = document.getElementById("exportJson");
-  const jsonFile = document.getElementById("jsonFile");
-  const importJsonFileBtn = document.getElementById("importJsonFile");
-
-  // Weather dialog
-  const weatherBtn = document.getElementById("weatherBtn");
-  const weatherDialog = document.getElementById("weatherDialog");
-  const closeWeather = document.getElementById("closeWeather");
-  const showWeather = document.getElementById("showWeather");
-  const useMyLocation = document.getElementById("useMyLocation");
-  const locationQuery = document.getElementById("locationQuery");
-  const findLocation = document.getElementById("findLocation");
-  const locationStatus = document.getElementById("locationStatus");
-  const saveWeatherBtn = document.getElementById("saveWeather");
-  const clearLocationBtn = document.getElementById("clearLocation");
-
-  // Mobile kitchen toggle
-  const togglePantryBtn = document.getElementById("togglePantry");
-  const mobilePantryStatus = document.getElementById("mobilePantryStatus");
-
-  const kitchenTitle = document.getElementById("kitchenTitle");
-  if (kitchenTitle) kitchenTitle.textContent = KITCHEN_LABEL;
-
-  function toast(msg, kind="info"){
-    let el = document.getElementById("__toast");
-    if (!el) {
-      el = document.createElement("div");
-      el.id="__toast";
-      el.style.cssText = `
-        position:fixed;left:50%;bottom:18px;transform:translateX(-50%);
-        background: color-mix(in srgb, var(--card) 96%, #000 4%);
-        padding:10px 14px;border-radius:999px;border:1px solid var(--border);
-        box-shadow: var(--shadow);font-size:13px;color:var(--text);z-index:9999;
-        opacity:0;transition:opacity .15s;`;
-      document.body.appendChild(el);
-    }
-    el.classList.remove("toastWarn");
-    if (kind === "warn") el.classList.add("toastWarn");
-    el.textContent = msg;
-    el.style.opacity = "1";
-    setTimeout(()=> el.style.opacity="0", 1900);
-  }
-
-  function normalizeName(s){
-    const raw = String(s ?? "");
-    const lines = raw.split(/\r?\n/).map(l => l.trim()).filter(l => l.length > 0);
-    return lines.join(" ").replace(/\s{2,}/g, " ").trim();
   }
 
   function getDish(id){ return state.dishes.find(d => d.id === id) || null; }
@@ -1027,57 +1046,10 @@
     return `p.${page}`;
   }
 
-  function ingredientsToText(ingredients){
-    const arr = Array.isArray(ingredients) ? ingredients : [];
-    return arr.map(x => String(x).trim()).filter(Boolean).join(", ");
-  }
-
-  function parseIngredientsFromText(text){
-    const raw = String(text || "");
-    const lines = raw.split(/\r?\n/).map(x=>x.trim()).filter(Boolean);
-    if (lines.length > 1) return lines;
-    const one = raw.trim();
-    if (!one) return [];
-    if (one.includes("|")) return one.split("|").map(x=>x.trim()).filter(Boolean);
-    if (one.includes(",")) return one.split(",").map(x=>x.trim()).filter(Boolean);
-    return [one];
-  }
-
-  // ---------- Filters ----------
-  function getSelectedCategories(){
-    const selected = new Set();
-    if (filterBreakfast.checked) selected.add("Breakfast");
-    if (filterLunch.checked) selected.add("Lunch");
-    if (filterDinner.checked) selected.add("Dinner");
-    return selected;
-  }
-  function filteredDishes(q){
-    const s=(q||"").trim().toLowerCase();
-    const selected = getSelectedCategories();
-    const useFilter = selected.size > 0 && selected.size < 3;
-
-    const arr=[...state.dishes].sort((a,b)=>a.name.localeCompare(b.name));
-    return arr.filter(d => {
-      const ing = ingredientsToText(d.ingredients).toLowerCase();
-      const textOk = !s ||
-        d.name.toLowerCase().includes(s) ||
-        (d.book||"").toLowerCase().includes(s) ||
-        ing.includes(s);
-      if (!textOk) return false;
-
-      if (!useFilter || selected.size === 0) return true;
-      const cats = d.categories || {};
-      for (const c of selected){
-        if (cats[c]) return true;
-      }
-      return false;
-    });
-  }
-
   // ---------- Totals ----------
   function dayTotals(dayObj){
     let cal=0, protein=0, carbs=0, fat=0;
-    ["Breakfast","Lunch","Dinner"].forEach(meal => {
+    MEALS.forEach(meal => {
       const entry = dayObj[meal];
       if (!entry?.dishId) return;
       const d = getDish(entry.dishId);
@@ -1093,7 +1065,7 @@
   function macroClass(actual, target){
     if (!target || target <= 0) return "neutral";
     if (actual > target) return "red";
-    if (actual === target) return "green";
+    if (Math.abs(actual-target) <= target*0.10) return "green";
     return "amber";
   }
   function macroFillPct(actual, target){
@@ -1161,12 +1133,20 @@
     if (!dish) return false;
     const cats = dish.categories || {};
     if (cats[meal] === false) return false;
-    return true;
+    return !!cats[meal];
   }
   function confirmCategoryMismatchIfNeeded(dish, meal){
     if (!dish) return false;
     if (isDishAllowedForMeal(dish, meal)) return true;
     return confirm(`“${dish.name}” isn’t tagged for ${meal}.\n\nAssign anyway?`);
+  }
+
+  // ---------- Tag filtering (AND) ----------
+  function dishHasAllFilteredTags(dish){
+    const filter = state.ui?.tagFilter || [];
+    if (!filter.length) return true;
+    const tags = new Set((dish.tags||[]).map(x=>String(x).toLowerCase()));
+    return filter.every(t => tags.has(String(t).toLowerCase()));
   }
 
   // ---------- Tap-to-assign ----------
@@ -1184,8 +1164,8 @@
   }
   function updateSelectedDishUI(){
     const d = state.ui.selectedDishId ? getDish(state.ui.selectedDishId) : null;
-    selectedDishLabel.textContent = d ? d.name : "None";
-    clearSelected.disabled = !d;
+    document.getElementById("selectedDishLabel").textContent = d ? d.name : "None";
+    document.getElementById("clearSelected").disabled = !d;
   }
   function assignSelectedDishToSlot(day, meal){
     const id = state.ui.selectedDishId;
@@ -1227,12 +1207,13 @@
   }
   function setLocationStatus(){
     const w = state.weather || {};
+    const el = document.getElementById("locationStatus");
     if (w.lat == null || w.lon == null) {
-      locationStatus.textContent = "No location set.";
+      el.textContent = "No location set.";
       return;
     }
     const name = w.locationName ? ` (${w.locationName})` : "";
-    locationStatus.textContent = `Location: ${w.lat.toFixed(4)}, ${w.lon.toFixed(4)}${name}`;
+    el.textContent = `Location: ${w.lat.toFixed(4)}, ${w.lon.toFixed(4)}${name}`;
   }
   async function fetchWeatherForWeek(){
     const w = state.weather;
@@ -1341,6 +1322,333 @@
     renderWeek();
   }
 
+  // ---------- Smart fill helpers ----------
+  function dishesForMeal(meal){
+    return state.dishes.filter(d => isDishAllowedForMeal(d, meal));
+  }
+  function hasTargets(){
+    const tar = state.targets || {};
+    return (tar.cal||0) > 0 || (tar.protein||0) > 0 || (tar.carbs||0) > 0 || (tar.fat||0) > 0;
+  }
+  function scoreAgainstTargets(tot){
+    const tar = state.targets || { cal:0, protein:0, carbs:0, fat:0 };
+    if (!hasTargets()) return 0;
+    function term(actual, target){
+      if (!target || target <= 0) return 0;
+      const diff = (actual - target) / target;
+      return diff * diff;
+    }
+    return (
+      1.0 * term(tot.cal, tar.cal) +
+      1.4 * term(tot.protein, tar.protein) +
+      1.1 * term(tot.carbs, tar.carbs) +
+      1.1 * term(tot.fat, tar.fat)
+    );
+  }
+  function dayTotalsIfAddDish(dayObj, dish){
+    const t = dayTotals(dayObj);
+    return {
+      cal:t.cal+(+dish.cal||0),
+      protein:t.protein+(+dish.protein||0),
+      carbs:t.carbs+(+dish.carbs||0),
+      fat:t.fat+(+dish.fat||0)
+    };
+  }
+  function remainingEmptySlots(dayObj){
+    let n = 0;
+    for (const meal of MEALS){
+      if (!dayObj[meal]?.dishId) n++;
+    }
+    return n;
+  }
+  function getUsedDishIdsForWeek(weekIso){
+    const plan = state.planByWeekStart?.[weekIso];
+    const used = new Set();
+    if (!plan) return used;
+    for (const day of DAYS){
+      const dayObj = plan[day];
+      if (!dayObj) continue;
+      for (const meal of MEALS){
+        const id = dayObj[meal]?.dishId;
+        if (id) used.add(id);
+      }
+    }
+    return used;
+  }
+  function getUsedDishIdsFromPreviousWeeks(currentWeekStart, weeksBack){
+    const used = new Set();
+    for (let i = 1; i <= weeksBack; i++){
+      const prevWeekStart = addDays(currentWeekStart, -7 * i);
+      const prevIso = toISO(prevWeekStart);
+      const prevUsed = getUsedDishIdsForWeek(prevIso);
+      prevUsed.forEach(id => used.add(id));
+    }
+    return used;
+  }
+
+  function smartPickDishForMeal(dayObj, meal, usedDayIds, usedWeekIds, usedHistoryIds, emptySlotsBeforePick){
+    const avoid = new Set([...usedDayIds, ...usedWeekIds, ...usedHistoryIds]);
+    const bounds = getBounds();
+    const tar = state.targets || {};
+    const enforceCal = (Number(tar.cal)||0) > 0;
+    const enforceCarb = (Number(tar.carbs)||0) > 0;
+    const needMeetMinAtEnd = (emptySlotsBeforePick === 1);
+
+    function okProjected(proj){
+      if (enforceCal && proj.cal > bounds.calMax + 1e-9) return false;
+      if (enforceCarb && proj.carbs > bounds.carbMax + 1e-9) return false;
+      if (needMeetMinAtEnd){
+        if (enforceCal && proj.cal < bounds.calMin - 1e-9) return false;
+        if (enforceCarb && proj.carbs < bounds.carbMin - 1e-9) return false;
+      }
+      return true;
+    }
+
+    const poolAll = dishesForMeal(meal);
+    const pool = [];
+    for (const d of poolAll){
+      if (avoid.has(d.id)) continue;
+      const proj = dayTotalsIfAddDish(dayObj, d);
+      if (!okProjected(proj)) continue;
+      pool.push(d);
+    }
+
+    if (!pool.length) return null;
+
+    if (!hasTargets()){
+      return pool[Math.floor(Math.random()*pool.length)].id;
+    }
+
+    let best=null, bestScore=Infinity;
+    for (const d of pool){
+      const proj = dayTotalsIfAddDish(dayObj, d);
+      const s = scoreAgainstTargets(proj);
+      if (s < bestScore){ bestScore=s; best=d; }
+    }
+    return best?.id ?? null;
+  }
+
+  // ---------- DOM ----------
+  const mainRoot = document.getElementById("mainRoot");
+  const elWeek = document.getElementById("week");
+  const elWeekRange = document.getElementById("weekRange");
+  const elDishList = document.getElementById("dishList");
+  const elCount = document.getElementById("count");
+  const elSearch = document.getElementById("search");
+
+  const filterBreakfast = document.getElementById("filterBreakfast");
+  const filterLunch = document.getElementById("filterLunch");
+  const filterDinner = document.getElementById("filterDinner");
+
+  const clearSelected = document.getElementById("clearSelected");
+
+  const tCal = document.getElementById("tCal");
+  const tProtein = document.getElementById("tProtein");
+  const tCarbs = document.getElementById("tCarbs");
+  const tFat = document.getElementById("tFat");
+
+  const tolCalUnder = document.getElementById("tolCalUnder");
+  const tolCalOver = document.getElementById("tolCalOver");
+  const tolCarbUnder = document.getElementById("tolCarbUnder");
+  const tolCarbOver = document.getElementById("tolCarbOver");
+
+  // Add/import section
+  const dishAdminDetails = document.getElementById("dishAdminDetails");
+  const elDishName = document.getElementById("dishName");
+  const elDishCal = document.getElementById("dishCal");
+  const elDishProtein = document.getElementById("dishProtein");
+  const elDishCarbs = document.getElementById("dishCarbs");
+  const elDishFat = document.getElementById("dishFat");
+  const elDishBook = document.getElementById("dishBook");
+  const elDishPage = document.getElementById("dishPage");
+  const elDishIngredients = document.getElementById("dishIngredients");
+  const catBreakfast = document.getElementById("catBreakfast");
+  const catLunch = document.getElementById("catLunch");
+  const catDinner = document.getElementById("catDinner");
+  const elBulk = document.getElementById("bulk");
+
+  // Tags UI
+  const newTagName = document.getElementById("newTagName");
+  const addTagBtn = document.getElementById("addTagBtn");
+  const tagListChips = document.getElementById("tagListChips");
+  const dishTagsPicker = document.getElementById("dishTagsPicker");
+  const tagFilterChips = document.getElementById("tagFilterChips");
+
+  // File import/export
+  const csvFile = document.getElementById("csvFile");
+  const importCsvFileBtn = document.getElementById("importCsvFile");
+  const exportJsonBtn = document.getElementById("exportJson");
+  const jsonFile = document.getElementById("jsonFile");
+  const importJsonFileBtn = document.getElementById("importJsonFile");
+
+  // Weather dialog
+  const weatherBtn = document.getElementById("weatherBtn");
+  const weatherDialog = document.getElementById("weatherDialog");
+  const closeWeather = document.getElementById("closeWeather");
+  const showWeather = document.getElementById("showWeather");
+  const useMyLocation = document.getElementById("useMyLocation");
+  const locationQuery = document.getElementById("locationQuery");
+  const findLocation = document.getElementById("findLocation");
+  const saveWeatherBtn = document.getElementById("saveWeather");
+  const clearLocationBtn = document.getElementById("clearLocation");
+
+  // Mobile kitchen toggle
+  const togglePantryBtn = document.getElementById("togglePantry");
+  const mobilePantryStatus = document.getElementById("mobilePantryStatus");
+
+  // ---------- Tags rendering ----------
+  function renderTagsConfig(){
+    if (!tagListChips) return;
+    ensureTags();
+    tagListChips.innerHTML = "";
+    state.tags.forEach(tag => {
+      const chip = document.createElement("span");
+      chip.className = "tagChip";
+      chip.innerHTML = `<b>${tag}</b> <span class="x" title="Delete">✕</span>`;
+      chip.querySelector(".x").addEventListener("click", () => {
+        if (!confirm(`Delete tag "${tag}"? It will be removed from all dishes.`)) return;
+        state.tags = state.tags.filter(t => t.toLowerCase() !== tag.toLowerCase());
+        state.dishes.forEach(d => d.tags = (d.tags||[]).filter(t => t.toLowerCase() !== tag.toLowerCase()));
+        state.ui.tagFilter = (state.ui.tagFilter||[]).filter(t => t.toLowerCase() !== tag.toLowerCase());
+        saveState();
+        renderTagsConfig();
+        renderDishTagsPicker();
+        renderTagFilter();
+        renderDishList();
+        renderWeek();
+      });
+      tagListChips.appendChild(chip);
+    });
+  }
+
+  function renderDishTagsPicker(){
+    if (!dishTagsPicker) return;
+    ensureTags();
+
+    const editingId = elDishName?.dataset?.editing;
+    let selected = [];
+    if (editingId){
+      const d = getDish(editingId);
+      selected = d?.tags || [];
+    } else {
+      try {
+        selected = JSON.parse(dishTagsPicker.dataset.selected || "[]");
+        if (!Array.isArray(selected)) selected = [];
+      } catch { selected = []; }
+    }
+
+    const selSet = new Set(selected.map(t=>t.toLowerCase()));
+    dishTagsPicker.innerHTML = "";
+
+    state.tags.forEach(tag => {
+      const lab = document.createElement("label");
+      lab.innerHTML = `<input type="checkbox"> ${tag}`;
+      const cb = lab.querySelector("input");
+      cb.checked = selSet.has(tag.toLowerCase());
+
+      cb.addEventListener("change", () => {
+        const cur = new Set(selected.map(t=>t.toLowerCase()));
+        if (cb.checked) cur.add(tag.toLowerCase());
+        else cur.delete(tag.toLowerCase());
+
+        const rebuilt = state.tags.filter(t => cur.has(t.toLowerCase()));
+        selected = rebuilt;
+
+        if (editingId){
+          const d = getDish(editingId);
+          if (d) d.tags = rebuilt;
+          saveState();
+          renderDishList();
+          renderWeek();
+        } else {
+          dishTagsPicker.dataset.selected = JSON.stringify(rebuilt);
+        }
+      });
+
+      dishTagsPicker.appendChild(lab);
+    });
+  }
+
+  function renderTagFilter(){
+    if (!tagFilterChips) return;
+    ensureTags();
+    const active = new Set((state.ui.tagFilter||[]).map(t=>t.toLowerCase()));
+
+    tagFilterChips.innerHTML = "";
+    state.tags.forEach(tag => {
+      const chip = document.createElement("button");
+      chip.type = "button";
+      chip.className = "tagChip";
+      const isOn = active.has(tag.toLowerCase());
+      chip.style.opacity = isOn ? "1" : ".55";
+      chip.style.borderColor = isOn ? "color-mix(in srgb, var(--accent2) 45%, var(--border) 55%)" : "var(--border)";
+      chip.innerHTML = `<b>${tag}</b>`;
+      chip.addEventListener("click", () => {
+        const cur = new Set((state.ui.tagFilter||[]).map(t=>t.toLowerCase()));
+        if (cur.has(tag.toLowerCase())) cur.delete(tag.toLowerCase());
+        else cur.add(tag.toLowerCase());
+        state.ui.tagFilter = state.tags.filter(t => cur.has(t.toLowerCase()));
+        saveState();
+        renderTagFilter();
+        renderDishList();
+      });
+      tagFilterChips.appendChild(chip);
+    });
+  }
+
+  // ---------- Dishes filter ----------
+  function getSelectedCategories(){
+    const selected = new Set();
+    if (filterBreakfast.checked) selected.add("Breakfast");
+    if (filterLunch.checked) selected.add("Lunch");
+    if (filterDinner.checked) selected.add("Dinner");
+    return selected;
+  }
+
+  function filteredDishes(q){
+    const s=(q||"").trim().toLowerCase();
+    const selected = getSelectedCategories();
+    const useFilter = selected.size > 0 && selected.size < 3;
+
+    const arr=[...state.dishes].sort((a,b)=>a.name.localeCompare(b.name));
+    return arr.filter(d => {
+      const ing = ingredientsToText(d.ingredients).toLowerCase();
+      const tags = (d.tags||[]).join(" ").toLowerCase();
+
+      const textOk = !s ||
+        d.name.toLowerCase().includes(s) ||
+        (d.book||"").toLowerCase().includes(s) ||
+        ing.includes(s) ||
+        tags.includes(s);
+
+      if (!textOk) return false;
+
+      if (!dishHasAllFilteredTags(d)) return false;
+
+      if (!useFilter || selected.size === 0) return true;
+      const cats = d.categories || {};
+      for (const c of selected){
+        if (cats[c]) return true;
+      }
+      return false;
+    });
+  }
+
+  // ---------- Ingredients toggle helpers ----------
+  function setIngPanelOpen(panelEl, open){
+    if (!panelEl) return;
+    if (open){
+      panelEl.classList.add("open");
+      panelEl.style.maxHeight = panelEl.scrollHeight + "px";
+    } else {
+      panelEl.style.maxHeight = panelEl.scrollHeight + "px";
+      requestAnimationFrame(() => {
+        panelEl.classList.remove("open");
+        panelEl.style.maxHeight = "0px";
+      });
+    }
+  }
+
   // ---------- Dish CRUD ----------
   function clearDishForm(){
     elDishName.value = "";
@@ -1355,6 +1663,8 @@
     catLunch.checked = true;
     catDinner.checked = true;
     elDishName.dataset.editing = "";
+    dishTagsPicker.dataset.selected = "[]";
+    renderDishTagsPicker();
   }
 
   function saveDishFromForm(){
@@ -1380,11 +1690,17 @@
       categories.Breakfast = categories.Lunch = categories.Dinner = true;
     }
 
+    let tags = [];
+    try {
+      tags = JSON.parse(dishTagsPicker?.dataset?.selected || "[]");
+      if (!Array.isArray(tags)) tags = [];
+    } catch { tags = []; }
+
     const editingId = elDishName.dataset.editing;
     if (editingId) {
       const idx = state.dishes.findIndex(d => d.id === editingId);
       if (idx !== -1) {
-        state.dishes[idx] = { ...state.dishes[idx], name, cal, protein, carbs, fat, book, page: pageVal, ingredients, categories };
+        state.dishes[idx] = { ...state.dishes[idx], name, cal, protein, carbs, fat, book, page: pageVal, ingredients, categories, tags };
         saveState();
         clearDishForm();
         renderDishList();
@@ -1397,7 +1713,7 @@
       return toast("Dish already exists", "warn");
     }
 
-    state.dishes.push({ id: crypto.randomUUID(), name, cal, protein, carbs, fat, book, page: pageVal, ingredients, categories });
+    state.dishes.push({ id: crypto.randomUUID(), name, cal, protein, carbs, fat, book, page: pageVal, ingredients, categories, tags });
     saveState();
     clearDishForm();
     renderDishList();
@@ -1420,6 +1736,8 @@
     catLunch.checked = !!d.categories?.Lunch;
     catDinner.checked = !!d.categories?.Dinner;
     elDishName.dataset.editing = d.id;
+    dishTagsPicker.dataset.selected = JSON.stringify(d.tags || []);
+    renderDishTagsPicker();
     elDishName.focus();
   }
 
@@ -1440,22 +1758,13 @@
     }
 
     if (state.ui.selectedDishId === id) state.ui.selectedDishId = null;
-
-    if (state.ui.expandedIngredients && state.ui.expandedIngredients[id] != null) {
-      delete state.ui.expandedIngredients[id];
-    }
+    if (state.ui.expandedIngredients && state.ui.expandedIngredients[id] != null) delete state.ui.expandedIngredients[id];
 
     saveState();
     updateSelectedDishUI();
     renderDishList();
     renderWeek();
     toast("Dish deleted");
-  }
-
-  function parseBoolLike(v){
-    const s = String(v ?? "").trim().toLowerCase();
-    if (!s) return false;
-    return ["1","true","yes","y","t"].includes(s);
   }
 
   // ---------- Robust CSV parsing ----------
@@ -1536,6 +1845,20 @@
     return out;
   }
 
+  function parseBoolLike(v){
+    const s = String(v ?? "").trim().toLowerCase();
+    if (!s) return false;
+    return ["1","true","yes","y","t"].includes(s);
+  }
+
+  function parseTagsFromCell(v){
+    const raw = String(v ?? "").trim();
+    if (!raw) return [];
+    if (raw.includes("|")) return raw.split("|").map(normTag).filter(Boolean);
+    if (raw.includes(",")) return raw.split(",").map(normTag).filter(Boolean);
+    return [normTag(raw)].filter(Boolean);
+  }
+
   function importRowsAsDishes(rows){
     let added = 0, skipped = 0;
     if (!rows || rows.length === 0) return toast("No usable rows found", "warn");
@@ -1603,7 +1926,17 @@
       const ingRaw = headerMap ? (get(parts,"ingredients") ?? "") : (parts[10] ?? "");
       const ingredients = parseIngredientsFromText(ingRaw);
 
+      const tagRaw = headerMap ? (get(parts,"tags","tag") ?? "") : (parts[11] ?? "");
+      const tags = parseTagsFromCell(tagRaw);
+
       if (state.dishes.some(d => d.name.toLowerCase() === name.toLowerCase())) { skipped++; continue; }
+
+      // ensure global tags includes imported tags
+      for (const t of tags){
+        if (!t) continue;
+        if (!state.tags.some(x => x.toLowerCase() === t.toLowerCase())) state.tags.push(t);
+      }
+      ensureTags();
 
       state.dishes.push({
         id: crypto.randomUUID(),
@@ -1611,12 +1944,16 @@
         book: (book || "").trim(),
         page,
         ingredients,
+        tags,
         categories
       });
       added++;
     }
 
     saveState();
+    renderTagsConfig();
+    renderDishTagsPicker();
+    renderTagFilter();
     renderDishList();
     renderWeek();
     toast(`Imported ${added}, skipped ${skipped}`);
@@ -1673,9 +2010,11 @@
     const s = incoming && typeof incoming === "object" ? incoming : {};
     s.targets = { ...def.targets, ...(s.targets || {}) };
     s.tolerances = { ...def.tolerances, ...(s.tolerances || {}) };
+    s.tags = Array.isArray(s.tags) ? s.tags.map(normTag).filter(Boolean) : def.tags.slice();
     s.ui = { ...def.ui, ...(s.ui || {}) };
     s.ui.expandedIngredients = s.ui.expandedIngredients && typeof s.ui.expandedIngredients === "object"
       ? s.ui.expandedIngredients : {};
+    s.ui.tagFilter = Array.isArray(s.ui.tagFilter) ? s.ui.tagFilter : [];
     s.weather = { ...def.weather, ...(s.weather || {}) };
     s.uiPrefs = { ...def.uiPrefs, ...(s.uiPrefs || {}) };
     s.planByWeekStart = s.planByWeekStart || {};
@@ -1691,8 +2030,17 @@
       book: (d.book || "").trim(),
       page: (d.page === "" || d.page == null) ? null : Number(d.page),
       ingredients: Array.isArray(d.ingredients) ? d.ingredients.map(x => String(x).trim()).filter(Boolean) : parseIngredientsFromText(d.ingredients || ""),
+      tags: Array.isArray(d.tags) ? d.tags.map(normTag).filter(Boolean) : parseTagsFromCell(d.tags || ""),
       categories: { Breakfast:true, Lunch:true, Dinner:true, ...(d.categories || {}) }
     })).filter(d => d.name);
+
+    // merge tags from dishes into global tags
+    for (const d of s.dishes){
+      for (const t of (d.tags||[])){
+        if (!s.tags.some(x => x.toLowerCase() === t.toLowerCase())) s.tags.push(t);
+      }
+    }
+    s.tags = s.tags.map(normTag).filter(Boolean);
 
     for (const wk of Object.keys(s.planByWeekStart)) {
       for (const day of DAYS) {
@@ -1711,12 +2059,26 @@
     merged.targets = { ...merged.targets, ...(imported.targets || {}) };
     merged.tolerances = { ...merged.tolerances, ...(imported.tolerances || {}) };
     merged.weather = { ...merged.weather, ...(imported.weather || {}) };
-    if (merged.weather) merged.weather.cacheByWeek = {};
+    merged.weather.cacheByWeek = {};
+
+    const tagSet = new Map();
+    for (const t of (merged.tags||[])) tagSet.set(String(t).toLowerCase(), t);
+    for (const t of (imported.tags||[])) tagSet.set(String(t).toLowerCase(), t);
+    merged.tags = Array.from(tagSet.values()).map(normTag).filter(Boolean);
 
     const byName = new Map();
     for (const d of merged.dishes) byName.set(d.name.toLowerCase(), d);
     for (const d of imported.dishes || []) byName.set(d.name.toLowerCase(), d);
     merged.dishes = Array.from(byName.values());
+
+    // ensure dish tags exist in merged.tags
+    for (const d of merged.dishes){
+      d.tags = Array.isArray(d.tags) ? d.tags.map(normTag).filter(Boolean) : [];
+      for (const t of d.tags){
+        if (!merged.tags.some(x => x.toLowerCase() === t.toLowerCase())) merged.tags.push(t);
+      }
+    }
+    ensureTags();
 
     merged.planByWeekStart = { ...(merged.planByWeekStart || {}), ...(imported.planByWeekStart || {}) };
 
@@ -1724,6 +2086,7 @@
     merged.ui = { ...(merged.ui || {}), ...(current.ui || {}) };
     merged.ui.expandedIngredients = merged.ui.expandedIngredients && typeof merged.ui.expandedIngredients === "object"
       ? merged.ui.expandedIngredients : {};
+    merged.ui.tagFilter = Array.isArray(merged.ui.tagFilter) ? merged.ui.tagFilter : [];
 
     return merged;
   }
@@ -1759,7 +2122,20 @@
     toast("Imported (merged)");
   }
 
-  // ---------- Targets & tolerances ----------
+  // ---------- Targets ----------
+  function renderTargetsUI(){
+    const tar = state.targets || {};
+    const tol = getTol();
+    tCal.value = tar.cal ?? "";
+    tProtein.value = tar.protein ?? "";
+    tCarbs.value = tar.carbs ?? "";
+    tFat.value = tar.fat ?? "";
+    tolCalUnder.value = tol.calUnderPct;
+    tolCalOver.value = tol.calOverPct;
+    tolCarbUnder.value = tol.carbsUnderPct;
+    tolCarbOver.value = tol.carbsOverPct;
+  }
+
   function saveTargets(){
     state.targets = {
       cal: Number(tCal.value) || 0,
@@ -1778,120 +2154,7 @@
     toast("Targets saved");
   }
 
-  // ---------- Smart fill helpers ----------
-  function dishesForMeal(meal){
-    return state.dishes.filter(d => isDishAllowedForMeal(d, meal) && !!d.categories?.[meal]);
-  }
-
-  function hasTargets(){
-    const tar = state.targets || {};
-    return (tar.cal||0) > 0 || (tar.protein||0) > 0 || (tar.carbs||0) > 0 || (tar.fat||0) > 0;
-  }
-
-  function scoreAgainstTargets(tot){
-    const tar = state.targets || { cal:0, protein:0, carbs:0, fat:0 };
-    if (!hasTargets()) return 0;
-    function term(actual, target){
-      if (!target || target <= 0) return 0;
-      const diff = (actual - target) / target;
-      return diff * diff;
-    }
-    return (
-      1.0 * term(tot.cal, tar.cal) +
-      1.4 * term(tot.protein, tar.protein) +
-      1.1 * term(tot.carbs, tar.carbs) +
-      1.1 * term(tot.fat, tar.fat)
-    );
-  }
-
-  function dayTotalsIfAddDish(dayObj, dish){
-    const t = dayTotals(dayObj);
-    return {
-      cal:t.cal+(+dish.cal||0),
-      protein:t.protein+(+dish.protein||0),
-      carbs:t.carbs+(+dish.carbs||0),
-      fat:t.fat+(+dish.fat||0)
-    };
-  }
-
-  function remainingEmptySlots(dayObj){
-    let n = 0;
-    for (const meal of MEALS){
-      if (!dayObj[meal]?.dishId) n++;
-    }
-    return n;
-  }
-
-  function getUsedDishIdsForWeek(weekIso){
-    const plan = state.planByWeekStart?.[weekIso];
-    const used = new Set();
-    if (!plan) return used;
-    for (const day of DAYS){
-      const dayObj = plan[day];
-      if (!dayObj) continue;
-      for (const meal of MEALS){
-        const id = dayObj[meal]?.dishId;
-        if (id) used.add(id);
-      }
-    }
-    return used;
-  }
-
-  function getUsedDishIdsFromPreviousWeeks(currentWeekStart, weeksBack){
-    const used = new Set();
-    for (let i = 1; i <= weeksBack; i++){
-      const prevWeekStart = addDays(currentWeekStart, -7 * i);
-      const prevIso = toISO(prevWeekStart);
-      const prevUsed = getUsedDishIdsForWeek(prevIso);
-      prevUsed.forEach(id => used.add(id));
-    }
-    return used;
-  }
-
-  function smartPickDishForMeal(dayObj, meal, usedDayIds, usedWeekIds, usedHistoryIds, emptySlotsBeforePick){
-    const avoid = new Set([...usedDayIds, ...usedWeekIds, ...usedHistoryIds]);
-    const bounds = getBounds();
-    const tar = state.targets || {};
-    const enforceCal = (Number(tar.cal)||0) > 0;
-    const enforceCarb = (Number(tar.carbs)||0) > 0;
-    const needMeetMinAtEnd = (emptySlotsBeforePick === 1);
-
-    function okProjected(proj){
-      if (enforceCal && proj.cal > bounds.calMax + 1e-9) return false;
-      if (enforceCarb && proj.carbs > bounds.carbMax + 1e-9) return false;
-
-      if (needMeetMinAtEnd){
-        if (enforceCal && proj.cal < bounds.calMin - 1e-9) return false;
-        if (enforceCarb && proj.carbs < bounds.carbMin - 1e-9) return false;
-      }
-      return true;
-    }
-
-    const poolAll = dishesForMeal(meal);
-    const pool = [];
-    for (const d of poolAll){
-      if (avoid.has(d.id)) continue;
-      const proj = dayTotalsIfAddDish(dayObj, d);
-      if (!okProjected(proj)) continue;
-      pool.push(d);
-    }
-
-    if (!pool.length) return null;
-
-    if (!hasTargets()){
-      return pool[Math.floor(Math.random()*pool.length)].id;
-    }
-
-    let best=null, bestScore=Infinity;
-    for (const d of pool){
-      const proj = dayTotalsIfAddDish(dayObj, d);
-      const s = scoreAgainstTargets(proj);
-      if (s < bestScore){ bestScore=s; best=d; }
-    }
-    return best?.id ?? null;
-  }
-
-  // ---------- Day menu actions ----------
+  // ---------- Day actions ----------
   function isDayLocked(plan, day){ return !!plan[day]._locked; }
 
   function clearDay(plan, day){
@@ -1954,13 +2217,11 @@
     }
   }
 
-  // ---------- Week actions ----------
   function fillWeekOnlyEmptySmart(){
     const plan = ensureWeekPlan();
     if (!state.dishes.length) return toast("Add dishes first", "warn");
 
     const usedHistory = STRICT_NO_REPEATS ? getUsedDishIdsFromPreviousWeeks(weekStart, NO_REPEAT_WEEKS_BACK) : new Set();
-
     const usedWeek = new Set();
     for (const day of DAYS){
       const dayObj = plan[day];
@@ -2003,11 +2264,8 @@
     saveState();
     renderWeek();
 
-    if (failed > 0) {
-      toast(`Filled ${placed} slot(s). ${failed} left empty (no eligible dishes for category/tolerance).`, "warn");
-    } else {
-      toast("Filled empty meals (strict)");
-    }
+    if (failed > 0) toast(`Filled ${placed} slot(s). ${failed} left empty (no eligible dishes).`, "warn");
+    else toast("Filled empty meals (strict)");
   }
 
   function shuffleWeek(){
@@ -2034,9 +2292,7 @@
     for (const day of DAYS){
       if (isDayLocked(plan, day)) continue;
 
-      plan[day].Breakfast = emptyMeal();
-      plan[day].Lunch = emptyMeal();
-      plan[day].Dinner = emptyMeal();
+      MEALS.forEach(m => plan[day][m] = emptyMeal());
 
       const usedDay = new Set();
 
@@ -2047,6 +2303,7 @@
           : smartPickDishForMeal(plan[day], meal, usedDay, new Set(), new Set(), emptiesBefore);
 
         if (!pick) { failed++; continue; }
+
         plan[day][meal] = { dishId: pick, servings: 1 };
         usedDay.add(pick);
         usedWeek.add(pick);
@@ -2057,13 +2314,190 @@
     saveState();
     renderWeek();
 
-    if (failed > 0) {
-      toast(`Shuffled. Set ${placed} slot(s). ${failed} left empty (no eligible dishes for category/tolerance).`, "warn");
-    } else {
-      toast("Shuffled week (strict)");
-    }
+    if (failed > 0) toast(`Shuffled. Set ${placed} slot(s). ${failed} left empty.`, "warn");
+    else toast("Shuffled week (strict)");
   }
 
+  // ---------- Export CSV ----------
+  function exportWeekCSV(){
+    const plan = ensureWeekPlan();
+    const rows = [["day","date","locked","meal","dish","recipe_book","page","ingredients","tags","calories","protein_g","carbs_g","fat_g"]];
+    DAYS.forEach((day, idx) => {
+      const dateObj = addDays(weekStart, idx);
+      const dateStr = formatDate(dateObj);
+
+      MEALS.forEach(meal => {
+        const e = plan[day][meal];
+        const d = e?.dishId ? getDish(e.dishId) : null;
+        rows.push([
+          day, dateStr, plan[day]._locked ? "1" : "0", meal,
+          d ? d.name : "",
+          d ? (d.book || "") : "",
+          d ? (d.page != null ? d.page : "") : "",
+          d ? (Array.isArray(d.ingredients) ? d.ingredients.join("|") : "") : "",
+          d ? (Array.isArray(d.tags) ? d.tags.join("|") : "") : "",
+          d ? Math.round(+d.cal||0) : 0,
+          d ? Math.round(+d.protein||0) : 0,
+          d ? Math.round(+d.carbs||0) : 0,
+          d ? Math.round(+d.fat||0) : 0
+        ]);
+      });
+      const tot = dayTotals(plan[day]);
+      rows.push([day, dateStr, plan[day]._locked ? "1" : "0", "TOTAL", "", "", "", "", "", Math.round(tot.cal), Math.round(tot.protein), Math.round(tot.carbs), Math.round(tot.fat)]);
+    });
+
+    const csv = rows.map(r => r.map(cell => `"${String(cell).replace(/"/g,'""')}"`).join(",")).join("\n");
+    const blob = new Blob([csv], { type:"text/csv" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `meal-plan-${toISO(weekStart)}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+  }
+
+  // ---------- Export PDF one-page A4 (landscape + auto-scale) ----------
+  function exportWeekPDF(){
+    const plan = ensureWeekPlan();
+    const tar = state.targets || { cal:0, protein:0, carbs:0, fat:0 };
+    const range = fmtRange(weekStart);
+
+    const safe = (s) => String(s ?? "").replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+    const locationName = (state.weather?.locationName || "").trim();
+    const showWx = !!state.weather?.enabled;
+
+    const daysHTML = DAYS.map((day, idx) => {
+      const dateObj = addDays(weekStart, idx);
+      const dayObj = plan[day];
+      const tot = dayTotals(dayObj);
+
+      const w = getWeatherForDate(dateObj);
+      const wxText = (showWx && w)
+        ? `${weatherEmoji(w.code)} ${Math.round(w.tmax)}°/${Math.round(w.tmin)}°C`
+        : "";
+
+      const mealRows = MEALS.map(meal => {
+        const e = dayObj[meal];
+        const d = e?.dishId ? getDish(e.dishId) : null;
+
+        const name = d ? d.name : "";
+        const loc = d ? dishLocation(d) : "";
+        const kcal = d ? (Number(d.cal)||0) : 0;
+        const p = d ? (Number(d.protein)||0) : 0;
+        const c = d ? (Number(d.carbs)||0) : 0;
+        const f = d ? (Number(d.fat)||0) : 0;
+        const tags = d && (d.tags||[]).length ? d.tags.join(", ") : "";
+
+        return `
+          <tr>
+            <td>${safe(meal)}</td>
+            <td>
+              <div class="dishName">${safe(name || "—")}</div>
+              ${loc ? `<div class="dishLoc">${safe(loc)}</div>` : ``}
+              ${tags ? `<div class="dishTags">${safe(tags)}</div>` : ``}
+            </td>
+            <td>${Math.round(kcal)}</td>
+            <td>${Math.round(p)}</td>
+            <td>${Math.round(c)}</td>
+            <td>${Math.round(f)}</td>
+          </tr>
+        `;
+      }).join("");
+
+      return `
+        <section class="dayBlock">
+          <div class="dayHeader">
+            <div>
+              <div class="dayTitle">${safe(day)} <span class="date">${safe(formatDate(dateObj))}</span></div>
+              ${wxText ? `<div class="wx">${safe(wxText)}${locationName ? ` • ${safe(locationName)}` : ""}</div>` : ``}
+            </div>
+            <div class="totals">
+              <div><b>${Math.round(tot.cal)}</b> kcal</div>
+              <div>${Math.round(tot.protein)}P • ${Math.round(tot.carbs)}C • ${Math.round(tot.fat)}F</div>
+            </div>
+          </div>
+
+          <table>
+            <tbody>
+              ${mealRows}
+            </tbody>
+          </table>
+        </section>
+      `;
+    }).join("");
+
+    const html = `
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8"/>
+<title>Meal Plan</title>
+<style>
+@page { size: A4 landscape; margin: 10mm; }
+body { margin:0; font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial; color:#111827; }
+.wrapper { transform-origin: top left; }
+.header { display:flex; justify-content:space-between; margin-bottom:8px; border-bottom:2px solid #111827; padding-bottom:6px; }
+.title { font-size:16px; font-weight:900; }
+.meta { font-size:11px; color:#374151; text-align:right; }
+.grid { display:grid; grid-template-columns: repeat(3, 1fr); gap:8px; }
+.dayBlock { border:1px solid #111827; padding:6px; border-radius:8px; }
+.dayHeader { display:flex; justify-content:space-between; gap:10px; font-size:11px; margin-bottom:4px; }
+.dayTitle { font-weight:800; }
+.date { font-weight:500; color:#6b7280; margin-left:6px; }
+.wx { font-size:10px; color:#6b7280; margin-top:2px; }
+.totals { text-align:right; font-size:11px; }
+table { width:100%; border-collapse:collapse; font-size:10px; }
+td { padding:2px 3px; border-top:1px solid #d1d5db; vertical-align:top; }
+.dishName { font-weight:700; }
+.dishLoc { font-style:italic; font-size:9px; color:#6b7280; margin-top:1px; }
+.dishTags { font-size:9px; color:#374151; margin-top:1px; }
+</style>
+</head>
+<body>
+  <div class="wrapper" id="content">
+    <div class="header">
+      <div>
+        <div class="title">Meal Plan</div>
+        <div class="meta">${safe(range)}</div>
+      </div>
+      <div class="meta">
+        Targets: ${Math.round(tar.cal||0)} kcal • ${Math.round(tar.protein||0)}P • ${Math.round(tar.carbs||0)}C • ${Math.round(tar.fat||0)}F
+      </div>
+    </div>
+
+    <div class="grid">
+      ${daysHTML}
+    </div>
+  </div>
+
+  <script>
+  window.onload = function(){
+    const el = document.getElementById("content");
+    const maxH = 794; // approx A4 landscape height px
+    const maxW = 1123; // approx A4 landscape width px
+    const sH = maxH / el.scrollHeight;
+    const sW = maxW / el.scrollWidth;
+    const scale = Math.min(1, sH, sW);
+    el.style.transform = "scale(" + scale + ")";
+    setTimeout(() => window.print(), 200);
+  };
+  <\/script>
+</body>
+</html>`;
+
+    const w = window.open("", "_blank");
+    if (!w) {
+      toast("Popup blocked — allow popups for this site.", "warn");
+      return;
+    }
+    w.document.open();
+    w.document.write(html);
+    w.document.close();
+  }
+
+  // ---------- Copy plan ----------
   function copyPlan(){
     const plan = ensureWeekPlan();
     const tar = state.targets || { cal:0, protein:0, carbs:0, fat:0 };
@@ -2080,8 +2514,9 @@
         const d = e?.dishId ? getDish(e.dishId) : null;
         const name = d ? d.name : "(empty)";
         const loc = d ? dishLocation(d) : "";
+        const tags = d && (d.tags||[]).length ? ` [${d.tags.join(", ")}]` : "";
         const locText = loc ? ` — ${loc}` : "";
-        return `  - ${meal}: ${name}${locText}`;
+        return `  - ${meal}: ${name}${locText}${tags}`;
       }).join("\n");
       const lockText = dayObj._locked ? " (LOCKED)" : "";
       return `${day}${lockText} (${formatDate(dateObj)}) — Total: ${Math.round(tot.cal)} kcal, ${Math.round(tot.protein)}P ${Math.round(tot.carbs)}C ${Math.round(tot.fat)}F\n${mealLines}`;
@@ -2090,249 +2525,121 @@
     navigator.clipboard?.writeText(text).then(()=>toast("Copied")).catch(()=>toast("Couldn't copy", "warn"));
   }
 
-  function exportWeekCSV(){
-    const plan = ensureWeekPlan();
-    const rows = [["day","date","locked","meal","dish","recipe_book","page","ingredients","calories","protein_g","carbs_g","fat_g"]];
-    DAYS.forEach((day, idx) => {
-      const dateObj = addDays(weekStart, idx);
-      const dateStr = formatDate(dateObj);
+  // ---------- Render dish list ----------
+  function renderDishList(){
+    const list = filteredDishes(elSearch.value);
+    elDishList.innerHTML = "";
 
-      MEALS.forEach(meal => {
-        const e = plan[day][meal];
-        const d = e?.dishId ? getDish(e.dishId) : null;
-        rows.push([
-          day, dateStr, plan[day]._locked ? "1" : "0", meal,
-          d ? d.name : "",
-          d ? (d.book || "") : "",
-          d ? (d.page != null ? d.page : "") : "",
-          d ? (Array.isArray(d.ingredients) ? d.ingredients.join("|") : "") : "",
-          d ? Math.round(+d.cal||0) : 0,
-          d ? Math.round(+d.protein||0) : 0,
-          d ? Math.round(+d.carbs||0) : 0,
-          d ? Math.round(+d.fat||0) : 0
-        ]);
-      });
-      const tot = dayTotals(plan[day]);
-      rows.push([day, dateStr, plan[day]._locked ? "1" : "0", "TOTAL", "", "", "", "", Math.round(tot.cal), Math.round(tot.protein), Math.round(tot.carbs), Math.round(tot.fat)]);
-    });
+    state.ui.expandedIngredients = state.ui.expandedIngredients && typeof state.ui.expandedIngredients === "object"
+      ? state.ui.expandedIngredients : {};
 
-    const csv = rows.map(r => r.map(cell => `"${String(cell).replace(/"/g,'""')}"`).join(",")).join("\n");
-    const blob = new Blob([csv], { type:"text/csv" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `meal-plan-${toISO(weekStart)}.csv`;
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-    URL.revokeObjectURL(url);
-  }
+    list.forEach(d => {
+      const el = document.createElement("div");
+      el.className = "dish";
+      el.setAttribute("draggable","true");
+      el.dataset.dishId = d.id;
 
-function exportWeekPDF(){
-  const plan = ensureWeekPlan();
-  const tar = state.targets || { cal:0, protein:0, carbs:0, fat:0 };
-  const tol = getTol();
-  const range = fmtRange(weekStart);
+      if (state.ui.selectedDishId === d.id) el.classList.add("selected");
 
-  const safe = (s) => String(s ?? "").replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
-  const locationName = (state.weather?.locationName || "").trim();
-  const showWx = !!state.weather?.enabled;
+      const loc = dishLocation(d);
+      const cats = d.categories || {};
+      const catText = MEALS.filter(m => cats[m]).join(", ") || "—";
+      const ingText = ingredientsToText(d.ingredients);
+      const hasIngredients = !!ingText;
+      const expanded = hasIngredients ? !!state.ui.expandedIngredients[d.id] : false;
 
-  const daysHTML = DAYS.map((day, idx) => {
-    const dateObj = addDays(weekStart, idx);
-    const dayObj = plan[day];
-    const tot = dayTotals(dayObj);
+      if (!hasIngredients && state.ui.expandedIngredients[d.id]) {
+        delete state.ui.expandedIngredients[d.id];
+        saveState();
+      }
 
-    const w = getWeatherForDate(dateObj);
-    const wxText = (showWx && w)
-      ? `${weatherEmoji(w.code)} ${Math.round(w.tmax)}°/${Math.round(w.tmin)}°C`
-      : "";
+      const tagsHTML = (d.tags||[]).length
+        ? `<div class="tagChips" style="margin-top:6px;">
+            ${(d.tags||[]).map(t=>`<span class="tagChip"><b>${t}</b></span>`).join("")}
+           </div>`
+        : "";
 
-    const mealRows = MEALS.map(meal => {
-      const e = dayObj[meal];
-      const d = e?.dishId ? getDish(e.dishId) : null;
-      const name = d ? d.name : "";
-      const loc = d ? dishLocation(d) : "";
-      const kcal = d ? (Number(d.cal)||0) : 0;
-      const p = d ? (Number(d.protein)||0) : 0;
-      const c = d ? (Number(d.carbs)||0) : 0;
-      const f = d ? (Number(d.fat)||0) : 0;
-
-      return `
-        <tr>
-          <td>${safe(meal)}</td>
-          <td>
-            <div class="dishName">${safe(name || "—")}</div>
-            ${loc ? `<div class="dishLoc">${safe(loc)}</div>` : ``}
-          </td>
-          <td>${Math.round(kcal)}</td>
-          <td>${Math.round(p)}</td>
-          <td>${Math.round(c)}</td>
-          <td>${Math.round(f)}</td>
-        </tr>
-      `;
-    }).join("");
-
-    return `
-      <section class="dayBlock">
-        <div class="dayHeader">
+      el.innerHTML = `
+        <div>
           <div>
-            <div class="dayTitle">${safe(day)} <span class="date">${safe(formatDate(dateObj))}</span></div>
-            ${wxText ? `<div class="wx">${safe(wxText)}${locationName ? ` • ${safe(locationName)}` : ""}</div>` : ``}
+            <strong>${d.name}</strong>
+            <small class="micro">(${d.cal} kcal, ${d.protein}P, ${d.carbs}C, ${d.fat}F)</small>
           </div>
-          <div class="totals">
-            <div><b>${Math.round(tot.cal)}</b> kcal</div>
-            <div>${Math.round(tot.protein)}P • ${Math.round(tot.carbs)}C • ${Math.round(tot.fat)}F</div>
-          </div>
+
+          ${loc ? `<div class="micro"><i>${loc}</i></div>` : ""}
+
+          ${tagsHTML}
+
+          ${
+            hasIngredients
+              ? `<div class="ingPanel ${expanded ? "open" : ""}" data-ings-panel="${d.id}">
+                   <em>${ingText}</em>
+                 </div>`
+              : ``
+          }
+
+          <div class="micro" style="margin-top:6px;">Categories: ${catText}</div>
         </div>
 
-        <table>
-          <tbody>
-            ${mealRows}
-          </tbody>
-        </table>
-      </section>
-    `;
-  }).join("");
+        <div class="dishActions">
+          ${
+            hasIngredients
+              ? `<button class="miniIcon" data-toggle-ings="${d.id}"
+                   title="${expanded ? "Hide ingredients" : "Show ingredients"}"
+                   aria-label="${expanded ? "Hide ingredients" : "Show ingredients"}"
+                   aria-pressed="${expanded}">
+                   ${expanded ? ICON_CLOSE : ICON_LIST}
+                 </button>`
+              : ``
+          }
+          <button class="miniIcon" data-edit="${d.id}" title="Edit dish" aria-label="Edit">✏️</button>
+          <button class="miniIcon danger" data-delete="${d.id}" title="Delete dish" aria-label="Delete">🗑️</button>
+        </div>
+      `;
 
-  const html = `
-<!doctype html>
-<html>
-<head>
-<meta charset="utf-8"/>
-<title>Meal Plan</title>
+      const panel = hasIngredients ? el.querySelector(`[data-ings-panel="${d.id}"]`) : null;
+      if (hasIngredients) panel.style.maxHeight = expanded ? (panel.scrollHeight + "px") : "0px";
 
-<style>
-@page { size: A4 landscape; margin: 10mm; }
-
-body {
-  margin:0;
-  font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial;
-}
-
-.wrapper {
-  transform-origin: top left;
-}
-
-.header {
-  display:flex;
-  justify-content:space-between;
-  margin-bottom:8px;
-  border-bottom:2px solid #000;
-  padding-bottom:6px;
-}
-
-.title { font-size:16px; font-weight:900; }
-.meta { font-size:11px; }
-
-.grid {
-  display:grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap:8px;
-}
-
-.dayBlock {
-  border:1px solid #000;
-  padding:6px;
-  page-break-inside: avoid;
-}
-
-.dayHeader {
-  display:flex;
-  justify-content:space-between;
-  font-size:11px;
-  margin-bottom:4px;
-}
-
-.dayTitle { font-weight:700; }
-.date { font-weight:400; }
-
-table {
-  width:100%;
-  border-collapse:collapse;
-  font-size:10px;
-}
-
-td {
-  padding:2px 3px;
-  border-top:1px solid #ccc;
-}
-
-.dishName { font-weight:600; }
-.dishLoc { font-style:italic; font-size:9px; }
-
-</style>
-</head>
-<body>
-
-<div class="wrapper" id="content">
-  <div class="header">
-    <div>
-      <div class="title">Meal Plan</div>
-      <div class="meta">${safe(range)}</div>
-    </div>
-    <div class="meta">
-      ${Math.round(tar.cal||0)} kcal • ${Math.round(tar.protein||0)}P • ${Math.round(tar.carbs||0)}C • ${Math.round(tar.fat||0)}F
-    </div>
-  </div>
-
-  <div class="grid">
-    ${daysHTML}
-  </div>
-</div>
-
-<script>
-window.onload = function(){
-  const el = document.getElementById("content");
-  const pageHeight = 794; // A4 landscape approx height in px
-  const scale = Math.min(1, pageHeight / el.scrollHeight);
-  el.style.transform = "scale(" + scale + ")";
-  setTimeout(() => window.print(), 200);
-};
-<\/script>
-
-</body>
-</html>`;
-
-  const w = window.open("", "_blank");
-  if (!w) {
-    alert("Popup blocked — allow popups for this site.");
-    return;
-  }
-  w.document.open();
-  w.document.write(html);
-  w.document.close();
-}
-
-  // ---------- Ingredients toggle helpers ----------
-  function setIngPanelOpen(panelEl, open){
-    if (!panelEl) return;
-    if (open){
-      panelEl.classList.add("open");
-      panelEl.style.maxHeight = panelEl.scrollHeight + "px";
-    } else {
-      panelEl.style.maxHeight = panelEl.scrollHeight + "px";
-      requestAnimationFrame(() => {
-        panelEl.classList.remove("open");
-        panelEl.style.maxHeight = "0px";
+      el.addEventListener("click", (ev) => {
+        const t = ev.target;
+        if (t && t.closest && t.closest(".dishActions")) return;
+        if (state.ui.selectedDishId === d.id) clearSelectedDish();
+        else setSelectedDish(d.id);
       });
-    }
+
+      el.addEventListener("dragstart", (ev) => {
+        const payload = { type:"dish", dishId: d.id };
+        ev.dataTransfer.setData("text/plain", JSON.stringify(payload));
+        ev.dataTransfer.effectAllowed = "copyMove";
+      });
+
+      if (hasIngredients) {
+        el.querySelector(`[data-toggle-ings="${d.id}"]`).addEventListener("click", (ev) => {
+          ev.stopPropagation();
+          const nowOpen = !state.ui.expandedIngredients[d.id];
+          state.ui.expandedIngredients[d.id] = nowOpen;
+
+          const btn = ev.currentTarget;
+          btn.innerHTML = nowOpen ? ICON_CLOSE : ICON_LIST;
+          btn.title = nowOpen ? "Hide ingredients" : "Show ingredients";
+          btn.setAttribute("aria-label", btn.title);
+          btn.setAttribute("aria-pressed", String(nowOpen));
+
+          setIngPanelOpen(panel, nowOpen);
+          saveState();
+        });
+      }
+
+      el.querySelector("[data-edit]").addEventListener("click", (ev) => { ev.stopPropagation(); editDish(d.id); });
+      el.querySelector("[data-delete]").addEventListener("click", (ev) => { ev.stopPropagation(); deleteDish(d.id); });
+
+      elDishList.appendChild(el);
+    });
+
+    elCount.textContent = `${state.dishes.length} dish${state.dishes.length===1? "" : "es"}`;
   }
 
-  // ---------- Render ----------
-  function renderTargetsUI(){
-    const tar = state.targets || {};
-    const tol = getTol();
-    tCal.value = tar.cal ?? "";
-    tProtein.value = tar.protein ?? "";
-    tCarbs.value = tar.carbs ?? "";
-    tFat.value = tar.fat ?? "";
-    tolCalUnder.value = tol.calUnderPct;
-    tolCalOver.value = tol.calOverPct;
-    tolCarbUnder.value = tol.carbsUnderPct;
-    tolCarbOver.value = tol.carbsOverPct;
-  }
-
+  // ---------- Render week ----------
   function renderWeek(){
     const plan = ensureWeekPlan();
     elWeek.innerHTML = "";
@@ -2341,6 +2648,7 @@ window.onload = function(){
       const dateObj = addDays(weekStart, idx);
       const dayObj = plan[day];
       const tot = dayTotals(dayObj);
+      const locked = !!dayObj._locked;
 
       const w = getWeatherForDate(dateObj);
       const weatherHTML = (state.weather.enabled && w)
@@ -2351,8 +2659,6 @@ window.onload = function(){
           </span>
         `
         : "";
-
-      const locked = !!dayObj._locked;
 
       const wrap = document.createElement("div");
       wrap.className = "dayCard" + (locked ? " locked" : "");
@@ -2407,13 +2713,19 @@ window.onload = function(){
             const mealC = d ? (Number(d.carbs)||0) : 0;
             const mealF = d ? (Number(d.fat)||0) : 0;
 
+            const tagsHTML = d && (d.tags||[]).length ? `
+              <div class="tagChips" style="margin-top:4px;">
+                ${(d.tags||[]).map(t=>`<span class="tagChip"><b>${t}</b></span>`).join("")}
+              </div>
+            ` : ``;
+
             return `
               <div class="mealRow" draggable="true" data-day="${day}" data-meal="${meal}">
                 <div class="muted"><strong>${meal}</strong></div>
 
                 <div class="dishBlock">
                   ${d
-                    ? `<div class="dishName">${d.name}</div>${loc ? `<div class="dishLoc">${loc}</div>` : ``}`
+                    ? `<div class="dishName">${d.name}</div>${loc ? `<div class="dishLoc">${loc}</div>` : ``}${tagsHTML}`
                     : `<div class="dishName dishEmpty">Tap to assign or drop a dish</div>`
                   }
                 </div>
@@ -2431,6 +2743,7 @@ window.onload = function(){
         </div>
       `;
 
+      // kebab
       const kebabBtn = wrap.querySelector('[data-kebab="1"]');
       const menu = wrap.querySelector('[data-menu="1"]');
       kebabBtn.addEventListener("click", (ev) => {
@@ -2444,16 +2757,15 @@ window.onload = function(){
         btn.addEventListener("click", (ev) => {
           ev.stopPropagation();
           if (btn.classList.contains("disabled")) return;
-
           menu.classList.remove("open");
           const action = btn.dataset.action;
-
           const plan = ensureWeekPlan();
           if (action === "fill") return fillDayEmptySmart(plan, day);
           if (action === "clear") return clearDay(plan, day);
         });
       });
 
+      // meal slot interactions
       wrap.querySelectorAll(".mealRow").forEach(row => {
         const dayName = row.dataset.day;
         const mealName = row.dataset.meal;
@@ -2522,124 +2834,117 @@ window.onload = function(){
     });
   }
 
-  // ---------- Kitchen list render ----------
-  function renderDishList(){
-    const list = filteredDishes(elSearch.value);
-    elDishList.innerHTML = "";
-
-    state.ui.expandedIngredients = state.ui.expandedIngredients && typeof state.ui.expandedIngredients === "object"
-      ? state.ui.expandedIngredients : {};
-
-    list.forEach(d => {
-      const el = document.createElement("div");
-      el.className = "dish";
-      el.setAttribute("draggable","true");
-      el.dataset.dishId = d.id;
-
-      if (state.ui.selectedDishId === d.id) el.classList.add("selected");
-
-      const loc = dishLocation(d);
-      const cats = d.categories || {};
-      const catText = ["Breakfast","Lunch","Dinner"].filter(m => cats[m]).join(", ") || "—";
-      const ingText = ingredientsToText(d.ingredients);
-      const hasIngredients = !!ingText;
-      const expanded = hasIngredients ? !!state.ui.expandedIngredients[d.id] : false;
-
-      if (!hasIngredients && state.ui.expandedIngredients[d.id]) {
-        delete state.ui.expandedIngredients[d.id];
-        saveState();
-      }
-
-      el.innerHTML = `
-        <div>
-          <div>
-            <strong>${d.name}</strong>
-            <small class="micro">(${d.cal} kcal, ${d.protein}P, ${d.carbs}C, ${d.fat}F)</small>
-          </div>
-
-          ${loc ? `<div class="micro"><i>${loc}</i></div>` : ""}
-
-          ${
-            hasIngredients
-              ? `<div class="ingPanel ${expanded ? "open" : ""}" data-ings-panel="${d.id}">
-                   <em>${ingText}</em>
-                 </div>`
-              : ``
-          }
-
-          <div class="micro" style="margin-top:6px;">Categories: ${catText}</div>
-        </div>
-
-        <div class="dishActions">
-          ${
-            hasIngredients
-              ? `<button class="miniIcon" data-toggle-ings="${d.id}"
-                   title="${expanded ? "Hide ingredients" : "Show ingredients"}"
-                   aria-label="${expanded ? "Hide ingredients" : "Show ingredients"}"
-                   aria-pressed="${expanded}">
-                   ${expanded ? ICON_CLOSE : ICON_LIST}
-                 </button>`
-              : ``
-          }
-          <button class="miniIcon" data-edit="${d.id}" title="Edit dish" aria-label="Edit">✏️</button>
-          <button class="miniIcon danger" data-delete="${d.id}" title="Delete dish" aria-label="Delete">🗑️</button>
-        </div>
-      `;
-
-      const panel = hasIngredients ? el.querySelector(`[data-ings-panel="${d.id}"]`) : null;
-      if (hasIngredients) panel.style.maxHeight = expanded ? (panel.scrollHeight + "px") : "0px";
-
-      el.addEventListener("click", (ev) => {
-        const t = ev.target;
-        if (t && t.closest && t.closest(".dishActions")) return;
-        if (state.ui.selectedDishId === d.id) clearSelectedDish();
-        else setSelectedDish(d.id);
-      });
-
-      el.addEventListener("dragstart", (ev) => {
-        const payload = { type:"dish", dishId: d.id };
-        ev.dataTransfer.setData("text/plain", JSON.stringify(payload));
-        ev.dataTransfer.effectAllowed = "copyMove";
-      });
-
-      if (hasIngredients) {
-        el.querySelector(`[data-toggle-ings="${d.id}"]`).addEventListener("click", (ev) => {
-          ev.stopPropagation();
-
-          const nowOpen = !state.ui.expandedIngredients[d.id];
-          state.ui.expandedIngredients[d.id] = nowOpen;
-
-          const btn = ev.currentTarget;
-          btn.innerHTML = nowOpen ? ICON_CLOSE : ICON_LIST;
-          btn.title = nowOpen ? "Hide ingredients" : "Show ingredients";
-          btn.setAttribute("aria-label", btn.title);
-          btn.setAttribute("aria-pressed", String(nowOpen));
-
-          setIngPanelOpen(panel, nowOpen);
-          saveState();
-        });
-      }
-
-      el.querySelector("[data-edit]").addEventListener("click", (ev) => { ev.stopPropagation(); editDish(d.id); });
-      el.querySelector("[data-delete]").addEventListener("click", (ev) => { ev.stopPropagation(); deleteDish(d.id); });
-
-      elDishList.appendChild(el);
-    });
-
-    elCount.textContent = `${state.dishes.length} dish${state.dishes.length===1? "" : "es"}`;
+  // ---------- Layout helpers ----------
+  function applyPantryCollapsed(){
+    const collapsed = !!state.uiPrefs.pantryCollapsedMobile;
+    if (collapsed) {
+      mainRoot.classList.add("pantryCollapsed");
+      mobilePantryStatus.textContent = `${KITCHEN_LABEL} hidden`;
+      togglePantryBtn.textContent = `Show kitchen`;
+    } else {
+      mainRoot.classList.remove("pantryCollapsed");
+      mobilePantryStatus.textContent = `${KITCHEN_LABEL} shown`;
+      togglePantryBtn.textContent = `Hide kitchen`;
+    }
   }
 
-  // ---------- Weather dialog UI ----------
+  // ---------- Weather dialog ----------
   function syncWeatherDialogUI(){
     showWeather.checked = !!state.weather.enabled;
     locationQuery.value = "";
     setLocationStatus();
   }
-  weatherBtn.addEventListener("click", () => {
+
+  // ---------- Main render ----------
+  function renderAll(){
+    elWeekRange.textContent = fmtRange(weekStart);
+    renderTargetsUI();
+    updateSelectedDishUI();
+    ensureTags();
+    renderTagsConfig();
+    renderDishTagsPicker();
+    renderTagFilter();
+    renderDishList();
+    renderWeek();
     syncWeatherDialogUI();
-    weatherDialog.showModal();
+    applyPantryCollapsed();
+  }
+
+  // ---------- Wire up controls ----------
+  document.getElementById("themeToggle").addEventListener("click", () => {
+    const current = getTheme();
+    setTheme(current === "dark" ? "light" : "dark");
   });
+
+  document.getElementById("saveTargets").addEventListener("click", saveTargets);
+  document.getElementById("fillEmpty").addEventListener("click", fillWeekOnlyEmptySmart);
+  document.getElementById("shuffleWeek").addEventListener("click", shuffleWeek);
+  document.getElementById("copyPlan").addEventListener("click", copyPlan);
+  document.getElementById("exportCSV").addEventListener("click", exportWeekCSV);
+  document.getElementById("exportPDF").addEventListener("click", exportWeekPDF);
+
+  document.getElementById("prevWeek").addEventListener("click", async ()=>{ weekStart = addDays(weekStart,-7); await fetchWeatherForWeek(); renderAll(); });
+  document.getElementById("nextWeek").addEventListener("click", async ()=>{ weekStart = addDays(weekStart, 7); await fetchWeatherForWeek(); renderAll(); });
+
+  document.getElementById("clearWeek").addEventListener("click", () => {
+    const label = fmtRange(weekStart);
+    if (!confirm(`Clear ALL days for this week (${label})? This cannot be undone.`)) return;
+    const plan = ensureWeekPlan();
+    DAYS.forEach(d => {
+      if (!plan[d]._locked) plan[d] = emptyDay();
+      else { const wasLocked = true; plan[d] = emptyDay(); plan[d]._locked = wasLocked; }
+    });
+    saveState();
+    renderWeek();
+  });
+
+  document.getElementById("reset").addEventListener("click", ()=>{
+    if (!confirm("Reset dishes, tags, targets, and all saved plans on this device?")) return;
+    localStorage.removeItem(KEY);
+    state = defaultState();
+    weekStart = startOfWeek(new Date());
+    saveState();
+    renderAll();
+    toast("Reset");
+  });
+
+  clearSelected.addEventListener("click", clearSelectedDish);
+
+  elSearch.addEventListener("input", renderDishList);
+  document.getElementById("clearSearch").addEventListener("click", ()=>{ elSearch.value=""; renderDishList(); elSearch.focus(); });
+  [filterBreakfast, filterLunch, filterDinner].forEach(cb => cb.addEventListener("change", renderDishList));
+
+  document.getElementById("saveDish").addEventListener("click", saveDishFromForm);
+  document.getElementById("importBulk").addEventListener("click", importBulkCSV);
+  elDishName.addEventListener("keydown", (e)=>{ if(e.key==="Enter"){ e.preventDefault(); saveDishFromForm(); } });
+
+  importCsvFileBtn.addEventListener("click", async () => { await importCsvFromFile(csvFile.files?.[0]); });
+  exportJsonBtn.addEventListener("click", exportJSON);
+  importJsonFileBtn.addEventListener("click", async () => { await importJSONFromFile(jsonFile.files?.[0]); });
+
+  // Tags add
+  addTagBtn.addEventListener("click", () => {
+    const t = normTag(newTagName.value);
+    if (!t) return toast("Tag name required", "warn");
+    if (!state.tags) state.tags = [];
+    if (state.tags.some(x => x.toLowerCase() === t.toLowerCase())) return toast("Tag already exists", "warn");
+    state.tags.push(t);
+    ensureTags();
+    newTagName.value = "";
+    saveState();
+    renderTagsConfig();
+    renderDishTagsPicker();
+    renderTagFilter();
+    toast("Tag added");
+  });
+  newTagName.addEventListener("keydown", (e) => {
+    if (e.key === "Enter"){ e.preventDefault(); addTagBtn.click(); }
+  });
+
+  // Weather dialog wiring
+  weatherBtn.addEventListener("click", () => { syncWeatherDialogUI(); weatherDialog.showModal(); });
   closeWeather.addEventListener("click", () => weatherDialog.close());
+
   useMyLocation.addEventListener("click", async () => {
     showWeather.checked = true;
     state.weather.enabled = true;
@@ -2669,101 +2974,39 @@ window.onload = function(){
     weatherDialog.close();
   });
 
-  // Mobile kitchen collapse
-  function applyPantryCollapsed(){
-    const collapsed = !!state.uiPrefs.pantryCollapsedMobile;
-    const lower = KITCHEN_LABEL.toLowerCase();
-
-    if (collapsed) {
-      mainRoot.classList.add("pantryCollapsed");
-      mobilePantryStatus.textContent = `${KITCHEN_LABEL} hidden`;
-      togglePantryBtn.textContent = `Show ${lower}`;
-    } else {
-      mainRoot.classList.remove("pantryCollapsed");
-      mobilePantryStatus.textContent = `${KITCHEN_LABEL} shown`;
-      togglePantryBtn.textContent = `Hide ${lower}`;
-    }
-  }
+  // Mobile kitchen toggle
   togglePantryBtn.addEventListener("click", () => {
     state.uiPrefs.pantryCollapsedMobile = !state.uiPrefs.pantryCollapsedMobile;
     saveState();
     applyPantryCollapsed();
   });
 
-  // ---------- Wire up controls ----------
-  document.getElementById("saveTargets").addEventListener("click", saveTargets);
-  document.getElementById("fillEmpty").addEventListener("click", fillWeekOnlyEmptySmart);
-  document.getElementById("shuffleWeek").addEventListener("click", shuffleWeek);
-  document.getElementById("copyPlan").addEventListener("click", copyPlan);
-  document.getElementById("exportPDF").addEventListener("click", exportWeekPDF);
-
-  document.getElementById("prevWeek").addEventListener("click", async ()=>{ weekStart = addDays(weekStart,-7); await fetchWeatherForWeek(); renderAll(); });
-  document.getElementById("nextWeek").addEventListener("click", async ()=>{ weekStart = addDays(weekStart, 7); await fetchWeatherForWeek(); renderAll(); });
-
-  document.getElementById("clearWeek").addEventListener("click", () => {
-    const label = fmtRange(weekStart);
-    if (!confirm(`Clear ALL days for this week (${label})? This cannot be undone.`)) return;
-    const plan = ensureWeekPlan();
-    DAYS.forEach(d => {
-      if (!plan[d]._locked) plan[d] = emptyDay();
-      else { const wasLocked = true; plan[d] = emptyDay(); plan[d]._locked = wasLocked; }
-    });
-    saveState();
-    renderWeek();
+  // close menus on outside click
+  document.addEventListener("click", () => {
+    document.querySelectorAll(".menuPanel.open").forEach(m => m.classList.remove("open"));
   });
 
-  document.getElementById("reset").addEventListener("click", ()=>{
-    if (!confirm("Reset dishes, targets, tolerances, and all saved plans on this device?")) return;
-    localStorage.removeItem(KEY);
-    state = defaultState();
-    weekStart = startOfWeek(new Date());
-    saveState();
-    renderAll();
-    toast("Reset");
-  });
-
-  clearSelected.addEventListener("click", clearSelectedDish);
-
-  elSearch.addEventListener("input", renderDishList);
-  document.getElementById("clearSearch").addEventListener("click", ()=>{ elSearch.value=""; renderDishList(); elSearch.focus(); });
-  [filterBreakfast, filterLunch, filterDinner].forEach(cb => cb.addEventListener("change", renderDishList));
-
-  document.getElementById("saveDish").addEventListener("click", saveDishFromForm);
-  document.getElementById("importBulk").addEventListener("click", importBulkCSV);
-  elDishName.addEventListener("keydown", (e)=>{ if(e.key==="Enter"){ e.preventDefault(); saveDishFromForm(); } });
-
-  importCsvFileBtn.addEventListener("click", async () => { await importCsvFromFile(csvFile.files?.[0]); });
-  exportJsonBtn.addEventListener("click", exportJSON);
-  importJsonFileBtn.addEventListener("click", async () => { await importJSONFromFile(jsonFile.files?.[0]); });
-
+  // defaults
   catBreakfast.checked = true;
   catLunch.checked = true;
   catDinner.checked = true;
 
-  if (window.matchMedia("(min-width: 921px)").matches) {
-    dishAdminDetails.open = false;
-  }
-
-  function renderAll(){
-    elWeekRange.textContent = fmtRange(weekStart);
-    renderTargetsUI();
-    updateSelectedDishUI();
-    renderDishList();
-    renderWeek();
-    syncWeatherDialogUI();
-    applyPantryCollapsed();
-  }
-
+  // init
   (async () => {
     applyPantryCollapsed();
     elWeekRange.textContent = fmtRange(weekStart);
     renderTargetsUI();
     updateSelectedDishUI();
+    ensureTags();
+    renderTagsConfig();
+    renderDishTagsPicker();
+    renderTagFilter();
     renderDishList();
     syncWeatherDialogUI();
     if (state.weather.enabled) await fetchWeatherForWeek();
     renderWeek();
     setLocationStatus();
+    if (window.matchMedia("(min-width: 921px)").matches) dishAdminDetails.open = false;
   })();
 })();
 </script>
